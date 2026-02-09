@@ -112,6 +112,11 @@ export class App {
       });
     }
     console.log(`All ${nb} addresses generated.`);
+
+    //appelle a la fonction downloadAdressesJson() pour telecharger les datasets
+    if (remaining === 0) {
+      this.downloadAdressesJson(nb);
+    }
   }
 
   /**
@@ -152,5 +157,19 @@ export class App {
       routes => this._routes.set(routes ?? [])
     );
   }
+  //fonction downloadAdressesJson() pour pour enregistrer les datasets dans un fichiers puis les telecharger
+  private downloadAdressesJson(nb: number): void {
+  const data = JSON.stringify(this._adresses(), null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `adresses_${nb}.json`;
+  a.click();
+
+  window.URL.revokeObjectURL(url);
+}
+
 
 }

@@ -1,0 +1,352 @@
+[
+  {
+    "lat": 45.23514334108297,
+    "lng": 5.791106238553289,
+    "name": "313 Chemin de Billerey",
+    "postCode": "38045",
+    "city": "Biviers"
+  },
+  {
+    "lat": 45.2052824770432,
+    "lng": 5.850207903054171,
+    "name": "42 Rue Hector Berlioz",
+    "postCode": "38150",
+    "city": "Domène"
+  },
+  {
+    "lat": 45.14019338020107,
+    "lng": 5.824144843186722,
+    "name": "108 Rue des Etons",
+    "postCode": "38422",
+    "city": "Saint-Martin-d'Uriage"
+  },
+  {
+    "lat": 45.129755253280415,
+    "lng": 5.672292739925847,
+    "name": "25 Rue des Martyrs",
+    "postCode": "38111",
+    "city": "Claix"
+  },
+  {
+    "lat": 45.26704784317544,
+    "lng": 5.894467059513319,
+    "name": "362 Chemin du Rafour",
+    "postCode": "38140",
+    "city": "Crolles"
+  },
+  {
+    "lat": 45.183832543537484,
+    "lng": 5.684670835383758,
+    "name": "11 Rue René Camphin",
+    "postCode": "38169",
+    "city": "Fontaine"
+  },
+  {
+    "lat": 45.26057142390775,
+    "lng": 5.825738895259096,
+    "name": "564 Chemin de la Pivolle",
+    "postCode": "38397",
+    "city": "Saint-Ismier"
+  },
+  {
+    "lat": 45.27379056398418,
+    "lng": 5.890462132634505,
+    "name": "209 Rue des Sources",
+    "postCode": "38140",
+    "city": "Crolles"
+  },
+  {
+    "lat": 45.15375423172133,
+    "lng": 5.689114105566814,
+    "name": "34 Rue des Ciments",
+    "postCode": "38486",
+    "city": "Seyssins"
+  },
+  {
+    "lat": 45.22873961772269,
+    "lng": 5.6942479214996755,
+    "name": "23bis place du muret",
+    "postCode": "38382",
+    "city": "Saint-Égrève"
+  },
+  {
+    "lat": 45.13681525025025,
+    "lng": 5.606630419434934,
+    "name": "434 chemin de Roche Rousse",
+    "postCode": "38205",
+    "city": "Lans-en-Vercors"
+  },
+  {
+    "lat": 45.26582693313883,
+    "lng": 5.647535701690977,
+    "name": "Chemin du Pigeonnier",
+    "postCode": "38565",
+    "city": "Voreppe"
+  },
+  {
+    "lat": 45.144866067227895,
+    "lng": 5.694894441186853,
+    "name": "4 Rue des 120 Toises",
+    "postCode": "38151",
+    "city": "Échirolles"
+  },
+  {
+    "lat": 45.17248546338522,
+    "lng": 5.634557617100752,
+    "name": "240 Voie du Tram",
+    "postCode": "38433",
+    "city": "Saint-Nizier-du-Moucherotte"
+  },
+  {
+    "lat": 45.12464956106565,
+    "lng": 5.645412705178981,
+    "name": "89 Route du Peuil",
+    "postCode": "38111",
+    "city": "Claix"
+  },
+  {
+    "lat": 45.163850592725495,
+    "lng": 5.762024571181038,
+    "name": "2 Rue Charles Ferre",
+    "postCode": "38421",
+    "city": "Saint-Martin-d'Hères"
+  },
+  {
+    "lat": 45.19266709666011,
+    "lng": 5.680397631565937,
+    "name": "19 Rue Armand et Marius Barbi",
+    "postCode": "38169",
+    "city": "Fontaine"
+  },
+  {
+    "lat": 45.173860345831955,
+    "lng": 5.788878995982361,
+    "name": "6 Chemin de la Piquette",
+    "postCode": "38179",
+    "city": "Gières"
+  },
+  {
+    "lat": 45.265960072317846,
+    "lng": 5.891930812771081,
+    "name": "283 Rue Louis Néel",
+    "postCode": "38140",
+    "city": "Crolles"
+  },
+  {
+    "lat": 45.14984652801573,
+    "lng": 5.861803676855762,
+    "name": "1050 Chemin de la Grivolée",
+    "postCode": "38422",
+    "city": "Saint-Martin-d'Uriage"
+  },
+  {
+    "lat": 45.2460169109301,
+    "lng": 5.822281621091583,
+    "name": "134 Chemin du Charmant Som",
+    "postCode": "38397",
+    "city": "Saint-Ismier"
+  },
+  {
+    "lat": 45.20094968067148,
+    "lng": 5.740270315354034,
+    "name": "3 Quai Jongkind",
+    "postCode": "38185",
+    "city": "Grenoble"
+  },
+  {
+    "lat": 45.194542102990596,
+    "lng": 5.868959766865574,
+    "name": "3221 Route du Balcon de Belledonne",
+    "postCode": "38334",
+    "city": "Revel"
+  },
+  {
+    "lat": 45.254536762991954,
+    "lng": 5.722617096796374,
+    "name": "777 Route de la Mearie",
+    "postCode": "38328",
+    "city": "Quaix-en-Chartreuse"
+  },
+  {
+    "lat": 45.23757211726781,
+    "lng": 5.835638834310401,
+    "name": "1174 Chemin de Pré Diot",
+    "postCode": "38397",
+    "city": "Saint-Ismier"
+  },
+  {
+    "lat": 45.25432142554579,
+    "lng": 5.600056238316984,
+    "name": "5720 Route d’Ézy",
+    "postCode": "38281",
+    "city": "Noyarey"
+  },
+  {
+    "lat": 45.196063050951736,
+    "lng": 5.710108369384135,
+    "name": "11 Parvis Louis Néel",
+    "postCode": "38185",
+    "city": "Grenoble"
+  },
+  {
+    "lat": 45.19968281110136,
+    "lng": 5.676610988013004,
+    "name": "8 Rue Colonel Manhès",
+    "postCode": "38169",
+    "city": "Fontaine"
+  },
+  {
+    "lat": 45.2678438640144,
+    "lng": 5.782722806281481,
+    "name": "68 Chemin Etanglanne",
+    "postCode": "38471",
+    "city": "Le Sappey-en-Chartreuse"
+  },
+  {
+    "lat": 45.2536564291417,
+    "lng": 5.824158820448687,
+    "name": "225 Chemin du Crêt de Chaume",
+    "postCode": "38397",
+    "city": "Saint-Ismier"
+  },
+  {
+    "lat": 45.15639020924901,
+    "lng": 5.7920654301024985,
+    "name": "3558 Route de la Côte - Cd 112",
+    "postCode": "38188",
+    "city": "Herbeys"
+  },
+  {
+    "lat": 45.1837714276795,
+    "lng": 5.736013176223657,
+    "name": "40 Boulevard Clemenceau",
+    "postCode": "38185",
+    "city": "Grenoble"
+  },
+  {
+    "lat": 45.15720067026622,
+    "lng": 5.68683446571146,
+    "name": "29 Rue de la Grenière",
+    "postCode": "38486",
+    "city": "Seyssins"
+  },
+  {
+    "lat": 45.13750820412573,
+    "lng": 5.659269615731054,
+    "name": "50 Route du Peuil",
+    "postCode": "38111",
+    "city": "Claix"
+  },
+  {
+    "lat": 45.175143111104155,
+    "lng": 5.848192690079373,
+    "name": "149 Impasse de la Motte",
+    "postCode": "38422",
+    "city": "Saint-Martin-d'Uriage"
+  },
+  {
+    "lat": 45.15333041985433,
+    "lng": 5.710399557757608,
+    "name": "8 Avenue Victor Hugo",
+    "postCode": "38151",
+    "city": "Échirolles"
+  },
+  {
+    "lat": 45.27401786023905,
+    "lng": 5.638972454633061,
+    "name": "236 Chemin des Rivalières",
+    "postCode": "38565",
+    "city": "Voreppe"
+  },
+  {
+    "lat": 45.20663978541752,
+    "lng": 5.837746679079915,
+    "name": "23 Rue du Grésivaudan",
+    "postCode": "38150",
+    "city": "Domène"
+  },
+  {
+    "lat": 45.11670324257771,
+    "lng": 5.705713022684268,
+    "name": "63 Avenue du Maquis de l'Oisans",
+    "postCode": "38317",
+    "city": "Le Pont-de-Claix"
+  },
+  {
+    "lat": 45.17347901121368,
+    "lng": 5.790129552426639,
+    "name": "38 Avenue de la Combe",
+    "postCode": "38179",
+    "city": "Gières"
+  },
+  {
+    "lat": 45.11451520493596,
+    "lng": 5.80863122621061,
+    "name": "277 Chemin de Pré l'Abé",
+    "postCode": "38529",
+    "city": "Vaulnaveys-le-Haut"
+  },
+  {
+    "lat": 45.11999913397393,
+    "lng": 5.809467664083225,
+    "name": "Chemin Fromental",
+    "postCode": "38529",
+    "city": "Vaulnaveys-le-Haut"
+  },
+  {
+    "lat": 45.19979300522607,
+    "lng": 5.755936681945619,
+    "name": "8 Boulevard de la Chantourne",
+    "postCode": "38516",
+    "city": "La Tronche"
+  },
+  {
+    "lat": 45.117076800714536,
+    "lng": 5.729115007605968,
+    "name": "8 Allee des Vignes",
+    "postCode": "38068",
+    "city": "Champagnier"
+  },
+  {
+    "lat": 45.19704387521977,
+    "lng": 5.67062160417,
+    "name": "10 Allee du Vivier",
+    "postCode": "38169",
+    "city": "Fontaine"
+  },
+  {
+    "lat": 45.131655118664206,
+    "lng": 5.6789416212479065,
+    "name": "3 Chemin du Repos de l'Ouvriere",
+    "postCode": "38111",
+    "city": "Claix"
+  },
+  {
+    "lat": 45.17703317165114,
+    "lng": 5.779032922927189,
+    "name": "28 Route des Maquis",
+    "postCode": "38421",
+    "city": "Saint-Martin-d'Hères"
+  },
+  {
+    "lat": 45.20699499434076,
+    "lng": 5.840010302431235,
+    "name": "28bis Rue de Montroux",
+    "postCode": "38150",
+    "city": "Domène"
+  },
+  {
+    "lat": 45.1826762890689,
+    "lng": 5.694164902544486,
+    "name": "1 Rue des Violettes",
+    "postCode": "38485",
+    "city": "Seyssinet-Pariset"
+  },
+  {
+    "lat": 45.26989557757906,
+    "lng": 5.739803876911552,
+    "name": "3315 Route de la Mearie",
+    "postCode": "38328",
+    "city": "Quaix-en-Chartreuse"
+  }
+]
