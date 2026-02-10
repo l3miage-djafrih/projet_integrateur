@@ -133,10 +133,22 @@ export class App {
   * generation de la matrice des distances 
   */
 
- protected readonly _matriceSignal = signal<Matrice | null>(null);
+ protected readonly _matriceSignal = signal<Matrice |undefined>(undefined);
+
+ 
   protected async generateMatrice(): Promise<void> {
-  const response = await this._genMatrice.generateMatriceFromAdresses(this._adresses());
-  console.log(response);
+    let a=this._adresses.length;
+    let response;
+    if(a<=50){
+       response = await this._genMatrice.generateMatriceFromAdresses(this._adresses());
+    }
+    else if(a>50 && a<100){
+      response=await this._genMatrice.getDistanceMatrixChunked(this._adresses());
+    }
+   
+     
+
+  
 
   this._matriceSignal.set(response);
 }
