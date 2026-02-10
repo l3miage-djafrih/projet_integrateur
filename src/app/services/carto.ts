@@ -131,11 +131,9 @@ export class Carto {
   }> {
     const totalAddresses = adresses.length;
 
-    console.log(`📊 Calculating distance matrix for ${totalAddresses} addresses...`);
-
     // ========== STRATÉGIE 1 : Direct (<=50) ==========
     if (totalAddresses <= 50) {
-      console.log('✅ Strategy: Direct API call');
+      console.log('Strategy: Direct API call');
       const locations = adresses.map(a => [a.lng, a.lat]);
       const req$ = this._httpClient.post(
         'https://api.openrouteservice.org/v2/matrix/driving-car',
@@ -157,9 +155,9 @@ export class Carto {
       };
     }
 
-    // ========== STRATÉGIE 2 : Chunked (51-100) ==========
+    // ========== STRATÉGIE 2 : decoupage (51-100) ==========
     if (totalAddresses <= 100) {
-      console.log('✅ Strategy: Chunked requests (2x2 = 4 requests)');
+      console.log('Strategie: decoupage (2x2 = 4 requests)');
       return {
         distances: (await this.getDistanceMatrixChunked(adresses)).distances,
         strategy: 'chunked'
@@ -167,7 +165,7 @@ export class Carto {
     }
 
     // ========== STRATÉGIE 3 : Clustering adaptatif (>100) ==========
-    console.log('✅ Strategy: Adaptive clustering');
+    console.log('Strategy: Adaptive clustering');
     return this.getDistanceMatrixAdaptive(adresses);
   }
 
@@ -179,12 +177,15 @@ export class Carto {
   }> {
     const maxLocationsPerRequest = 50;
     const totalAddresses = adresses.length;
+    //sleep pour eviter la limite de nombre de requettes par secondes
     const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+    //initialiser la matrice a 0
     const fullMatrix: number[][] = Array(totalAddresses)
       .fill(null)
       .map(() => Array(totalAddresses).fill(0));
 
+      //calculer le nombre de decoupes
     const numChunks = Math.ceil(totalAddresses / maxLocationsPerRequest);
     
     let requestCount = 0;
@@ -193,7 +194,7 @@ export class Carto {
     for (let i = 0; i < numChunks; i++) {
       for (let j = 0; j < numChunks; j++) {
         requestCount++;
-        console.log(`  📡 Chunked request ${requestCount}/${totalRequests}...`);
+        console.log(`  Chunked request ${requestCount}/${totalRequests}...`);
 
         const startI = i * maxLocationsPerRequest;
         const endI = Math.min((i + 1) * maxLocationsPerRequest, totalAddresses);
@@ -244,13 +245,11 @@ export class Carto {
             await sleep(1500);
           }
         } catch (error) {
-          console.error(`❌ Error on chunked request ${requestCount}:`, error);
+          console.error(`Error on chunked request ${requestCount}:`, error);
           throw error;
         }
       }
     }
-
-    console.log('✅ Chunked distance matrix completed!');
     return { distances: fullMatrix };
   }
 
@@ -265,18 +264,18 @@ export class Carto {
     clusters: Adresse[][];
     clusterCentroids: Adresse[];
   }> {
-    const targetClusters = 45; // Limite pour une seule requête API
+    const targetClusters = 50; // Limite pour une seule requête API
     let radius = 300; // Commencer avec un rayon de 300m
     let clusters: Adresse[][] = [];
 
-    // Essayer d'augmenter le rayon jusqu'à avoir <= 45 clusters
+    // Essayer d'augmenter le rayon jusqu'à avoir <= 50 clusters
     while (radius <= 2000) {
       clusters = this.clusterByRadius(adresses, radius);
       
-      console.log(`  🔍 Testing radius ${radius}m → ${clusters.length} clusters`);
+      console.log(`Testing radius ${radius}m → ${clusters.length} clusters`);
       
       if (clusters.length <= targetClusters) {
-        console.log(`  ✅ Using radius clustering (${radius}m, ${clusters.length} clusters) - PRECISE`);
+        console.log(` Using radius clustering (${radius}m, ${clusters.length} clusters) - PRECISE`);
         const result = await this.getMatrixFromClusters(adresses, clusters);
         return {
           ...result,
@@ -285,13 +284,10 @@ export class Carto {
           clusterCentroids: clusters.map(c => this.getClusterCentroid(c))
         };
       }
-      
       radius += 100;
     }
 
     // Si aucun rayon ne fonctionne, forcer K-means
-    console.log(`  ⚠️ Too many clusters with radius, switching to K-means (${targetClusters} clusters)`);
-    clusters = this.kMeansClustering(adresses, targetClusters);
     const result = await this.getMatrixFromClusters(adresses, clusters);
     return {
       ...result,
@@ -309,19 +305,23 @@ export class Carto {
     radiusMeters: number
   ): Adresse[][] {
     const clusters: Adresse[][] = [];
+    //indices des adresses déjà traitées pour évite de les regrouper plusieurs fois
     const visited = new Set<number>();
 
     for (let i = 0; i < adresses.length; i++) {
+      //Si l’adresse i est deja dans un cluster on la saute
       if (visited.has(i)) continue;
-
+      //On démarre un cluster avec ladresse i (elle devient le centre de référence)
       const cluster: Adresse[] = [adresses[i]];
       visited.add(i);
 
+      //Conversion en point Geo
       const point1 = turf.point([adresses[i].lng, adresses[i].lat]);
-
+      
+      //Comparaison avec les autres adresses
       for (let j = i + 1; j < adresses.length; j++) {
         if (visited.has(j)) continue;
-
+        //Calcul de la distance(Turf.js)
         const point2 = turf.point([adresses[j].lng, adresses[j].lat]);
         const distance = turf.distance(point1, point2, { units: 'meters' });
 
@@ -344,14 +344,18 @@ export class Carto {
     adresses: readonly Adresse[],
     k: number
   ): Adresse[][] {
+    ////Transformation des adresses en points GeoJSON
     const points = turf.featureCollection(
       adresses.map((a, i) => turf.point([a.lng, a.lat], { index: i }))
     );
-    
+    //Affecte chaque point au centroïde le plus proche
     const clustered = turf.clustersKmeans(points, { numberOfClusters: k });
-    
+
+    //Initialisation des clusters vides
     const clusters: Adresse[][] = Array(k).fill(null).map(() => []);
-    
+    //Répartition des adresses dans les clusters
+    //clusterIndex : numéro du cluster
+    //addrIndex : index de l’adresse originale
     clustered.features.forEach((feature) => {
       const clusterIndex = feature.properties!.cluster;
       const addrIndex = feature.properties!['index'];
@@ -359,12 +363,14 @@ export class Carto {
         clusters[clusterIndex].push(adresses[addrIndex]);
       }
     });
-    
+    //Nettoyage des clusters vides
     return clusters.filter(c => c.length > 0);
   }
 
   /**
    * Calculer la matrice à partir de clusters
+   * regroupe des adresses en k clusters géographiques 
+   * en utilisant l’algorithme K-Means (chaque adresse est affectée au centre le plus proche)
    */
   private async getMatrixFromClusters(
     adresses: readonly Adresse[],
@@ -372,9 +378,6 @@ export class Carto {
   ): Promise<{ distances: number[][] }> {
     // Calculer centroïdes
     const centroids = clusters.map(c => this.getClusterCentroid(c));
-
-    console.log(`  📡 Fetching distances between ${centroids.length} cluster centroids...`);
-
     // Matrice entre centroïdes (récursif, utilisera stratégie 1 ou 2)
     const centroidResult = await this.getDistanceMatrix(centroids);
     const centroidMatrix = centroidResult.distances;
@@ -414,7 +417,8 @@ export class Carto {
   }
 
   /**
-   * Centroïde d'un cluster
+   * calcule le centroïde géographique d’un cluster d’adresses
+   * et le renvoie sous forme d’un objet Adresse
    */
   private getClusterCentroid(cluster: Adresse[]): Adresse {
     if (cluster.length === 1) return cluster[0];

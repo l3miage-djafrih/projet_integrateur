@@ -114,10 +114,10 @@ export class App {
     console.log(`All ${nb} addresses generated.`);
 
     //appelle a la fonction downloadAdressesJson() pour telecharger les datasets
-   if (remaining === 0) {
+   /*if (remaining === 0) {
   this.downloadAdressesJson(nb);
   await this.downloadMatrix(nb);
-}
+}*/
   }
 
   /**
@@ -158,7 +158,7 @@ export class App {
       routes => this._routes.set(routes ?? [])
     );
   }
-  //fonction downloadAdressesJson() pour enregistrer les datasets dans un fichiers puis les telecharger
+  //fonction downloadAdressesJson() pour enregistrer les adresses dans un fichiers puis les telecharger
   private downloadAdressesJson(nb: number): void {
   const data = JSON.stringify(this._adresses(), null, 2);
   const blob = new Blob([data], { type: 'application/json' });
@@ -174,19 +174,8 @@ export class App {
 
 private async downloadMatrix(nb: number): Promise<void> {
   try {
-    console.log(`🚀 Starting distance matrix calculation for ${nb} addresses...`);
-    
     const result = await this._srvCarto.getDistanceMatrix(this._adresses());
-    
-    console.log(`✅ Matrix calculated using strategy: ${result.strategy}`);
-    
-    if (result.clusters) {
-      console.log(`📊 Cluster info:`, {
-        numClusters: result.clusters.length,
-        clusterSizes: result.clusters.map(c => c.length)
-      });
-    }
-    
+    console.log(`Matrix calculated using strategy: ${result.strategy}`);
     const data = JSON.stringify({
       distances: result.distances,
       metadata: {
@@ -206,16 +195,12 @@ private async downloadMatrix(nb: number): Promise<void> {
 
     const a = document.createElement('a');
     a.href = url;
-    a.download = `matrix_${nb}_${result.strategy}.json`;
+    a.download = `matrix_${nb}.json`;
     a.click();
 
     window.URL.revokeObjectURL(url);
-    
-    console.log(`💾 Matrix file downloaded: matrix_${nb}_${result.strategy}.json`);
   } catch (err) {
-    console.error("❌ Matrix error:", err);
+    console.error("Matrix error:", err);
   }
 }
-
-
 }
