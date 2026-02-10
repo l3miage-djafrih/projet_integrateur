@@ -20,3 +20,19 @@ MaxTimePerVehicule  : <input #maxTime name="maxTime" type="number" min="1" place
                     <input type="submit" value="Optimize Routes" />
 </pre>
 </form>
+<p>
+
+<button (click)="this.generateMatrice()" 
+>
+click ici pour générer la matrice de distance
+</button>
+
+</p>
+
+   <p> la visualizatin de la matrice des distances n'est pas optimale </p>
+     
+     @for(distance of this._matriceSignal()?.distances;track distance;){
+          <p>-------------------------------------</p>
+          <div>{{distance}}</div>
+        
+     }

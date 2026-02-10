@@ -7,7 +7,9 @@ import { getMarker } from './utils/marker';
 import { FormsModule } from '@angular/forms';
 import { Adresse } from './data/adresse';
 import { OptimizationResult } from './services/OptimizationResult';
-
+import { CommonModule } from '@angular/common';
+import { adressToMatrice } from './services/generationMatrice';
+import { Matrice } from './data/Matrice';
 const lastAdressesKey = "adresses";
 const lastOptimizationResponseKey = "lastOptimizationResponse";
 const lastRoutesKey = "lastRoutes";
@@ -17,7 +19,9 @@ const lastRoutesKey = "lastRoutes";
   imports: [
     // RouterOutlet,
     FormsModule,
-    LeafletModule
+    LeafletModule,
+    CommonModule
+    
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss'
@@ -25,6 +29,7 @@ const lastRoutesKey = "lastRoutes";
 export class App {
   // Services
   private readonly _srvCarto = inject(Carto);
+  private readonly _genMatrice=inject(adressToMatrice);
 
   // Local state
   private readonly bounds = signal<LatLngBoundsLiteral>([[45.1, 5.6], [45.3, 5.9]]); // Rectangle autour de Grenoble
@@ -35,7 +40,11 @@ export class App {
     center: latLng(45.188529, 5.724524), // Coordonnée de Grenoble
   };
 
-  private readonly _adresses = signal<readonly Adresse[]>(
+
+  private readonly _matrice=signal<Matrice|null>(null);
+
+
+   private readonly _adresses = signal<readonly Adresse[]>(
     localStorage.getItem(lastAdressesKey) ? JSON.parse(localStorage.getItem(lastAdressesKey)!) : []
   );
   private readonly _optimizationResult: WritableSignal<undefined | OptimizationResult>;
@@ -106,13 +115,34 @@ export class App {
       await this._srvCarto.getAdressesFromCoordinates(points).then((adresses) => {
         // Il faut filtrer les adresses "not found"
         console.log('Adresses fetched:', adresses);
+        
         this._adresses.update(L => [...L, ...adresses]);
         remaining = nb - this._adresses().length;
         console.log('Remaining:', remaining);
       });
     }
-    console.log(`All ${nb} addresses generated.`);
-  }
+
+}
+
+
+
+
+
+
+ /**
+  * generation de la matrice des distances 
+  */
+
+ protected readonly _matriceSignal = signal<Matrice | null>(null);
+  protected async generateMatrice(): Promise<void> {
+  const response = await this._genMatrice.generateMatriceFromAdresses(this._adresses());
+  console.log(response);
+
+  this._matriceSignal.set(response);
+}
+
+
+
 
   /**
    * Optimization of the routes with the given number of vehicles.
