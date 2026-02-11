@@ -43,4 +43,3 @@ __screenshots__/
 Thumbs.db
 
 # Secret files
-src/app/services/orsKey.ts

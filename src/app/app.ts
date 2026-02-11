@@ -187,8 +187,8 @@ protected async generateAdresses(nb: number): Promise<void> {
   }
 
   // ÉTAPE 4: Téléchargement
-  //this.downloadAdressesJson(this._adresses().length);
-  //await this.downloadMatrix(this._adresses().length);
+  this.downloadAdressesJson(this._adresses().length);
+  await this.downloadMatrix(this._adresses().length);
   
 }
 

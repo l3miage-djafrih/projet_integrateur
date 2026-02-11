@@ -8,7 +8,7 @@ import { firstValueFrom } from 'rxjs';
 import { orsKey } from './orsKey';
 import { OptimizationResult, parseOptimizationResultP, RouteStepBase } from './OptimizationResult';
 import { GeoJSONFeatureCollectionSchema, GeoJSONLineStringSchema } from 'zod-geojson';
-import * as turf from '@turf/turf';
+
 
 const cartoURL = 'https://api-adresse.data.gouv.fr';
 
