@@ -32,7 +32,7 @@ const matriceSchema = zod.object({
 // transformation du résultat de l'appel api à un object Matrice 
 
 export function parseMatrice(data: unknown): Matrice {
-   console.log(data);
+   
   return matriceSchema.parse(data);
   
 }

@@ -5,11 +5,14 @@ import { latLng, LatLngBoundsLiteral, LatLngTuple, Layer, MapOptions, Marker, po
 import { Carto } from './services/carto';
 import { getMarker } from './utils/marker';
 import { FormsModule } from '@angular/forms';
-import { Adresse } from './data/adresse';
+import { Adresse, ListAdresse } from './data/adresse';
 import { OptimizationResult } from './services/OptimizationResult';
 import { CommonModule } from '@angular/common';
 import { adresseToMatrice } from './services/generationMatrice';
-import { Matrice } from './data/Matrice';
+import { Matrice, parseMatrice, transformJsontoMatrice } from './data/Matrice';
+import {  matrix50 } from './data/matrix_50_complete';
+import { JsontoAdresseSChema } from './data/adresse';
+import { adresse50 } from './data/adresses_50.json';
 const lastAdressesKey = "adresses";
 const lastOptimizationResponseKey = "lastOptimizationResponse";
 const lastRoutesKey = "lastRoutes";
@@ -133,28 +136,20 @@ export class App {
   * generation de la matrice des distances 
   */
 
- protected readonly _matriceSignal = signal<Matrice |undefined>(undefined);
-
+ protected readonly _matriceSignal =signal<Matrice>(transformJsontoMatrice(matrix50));
  
-  protected async generateMatrice(): Promise<void> {
+ 
+  protected async writeMatrice(): Promise<void> {
     let a=this._adresses.length;
-    let response;
-    if(a<=50){
-       response = await this._genMatrice.getDistanceMatrix(this._adresses());
-    }
-    else if(a>50 && a<100){
-      response=await this._genMatrice.getDistanceMatrix(this._adresses());
-    }
-    else{
-      response=await this._genMatrice.getDistanceMatrix(this._adresses());
-    }
-     
+
+   console.log(this._matriceSignal());
+   
    
      
 
   
 
-  this._matriceSignal.set(response);
+ 
 }
 
 
