@@ -5,14 +5,12 @@ import { latLng, LatLngBoundsLiteral, LatLngTuple, Layer, MapOptions, Marker, po
 import { Carto } from './services/carto';
 import { getMarker } from './utils/marker';
 import { FormsModule } from '@angular/forms';
-import { Adresse, ListAdresse } from './data/adresse';
+import { Adresse } from './data/adresse';
 import { OptimizationResult } from './services/OptimizationResult';
-import { CommonModule } from '@angular/common';
-import { adresseToMatrice } from './services/generationMatrice';
-import { Matrice, parseMatrice, transformJsontoMatrice } from './data/Matrice';
-import {  matrix50 } from './data/matrix_50_complete';
-import { JsontoAdresseSChema } from './data/adresse';
+import { matrix50 } from './data/matrix_50_complete';
 import { adresse50 } from './data/adresses_50.json';
+import { consoleMatrix, Matrice } from './data/Matrice';
+
 const lastAdressesKey = "adresses";
 const lastOptimizationResponseKey = "lastOptimizationResponse";
 const lastRoutesKey = "lastRoutes";
@@ -22,9 +20,7 @@ const lastRoutesKey = "lastRoutes";
   imports: [
     // RouterOutlet,
     FormsModule,
-    LeafletModule,
-    CommonModule
-    
+    LeafletModule
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss'
@@ -32,7 +28,6 @@ const lastRoutesKey = "lastRoutes";
 export class App {
   // Services
   private readonly _srvCarto = inject(Carto);
-  private readonly _genMatrice=inject(adresseToMatrice);
 
   // Local state
   private readonly bounds = signal<LatLngBoundsLiteral>([[45.1, 5.6], [45.3, 5.9]]); // Rectangle autour de Grenoble
@@ -43,11 +38,7 @@ export class App {
     center: latLng(45.188529, 5.724524), // Coordonnée de Grenoble
   };
 
-
-  private readonly _matrice=signal<Matrice|null>(null);
-
-
-   private readonly _adresses = signal<readonly Adresse[]>(
+  private readonly _adresses = signal<readonly Adresse[]>(
     localStorage.getItem(lastAdressesKey) ? JSON.parse(localStorage.getItem(lastAdressesKey)!) : []
   );
   private readonly _optimizationResult: WritableSignal<undefined | OptimizationResult>;
@@ -118,42 +109,18 @@ export class App {
       await this._srvCarto.getAdressesFromCoordinates(points).then((adresses) => {
         // Il faut filtrer les adresses "not found"
         console.log('Adresses fetched:', adresses);
-        
         this._adresses.update(L => [...L, ...adresses]);
         remaining = nb - this._adresses().length;
         console.log('Remaining:', remaining);
       });
     }
+    console.log(`All ${nb} addresses generated.`);
 
-}
-
-
-
-
-
-
- /**
-  * generation de la matrice des distances 
-  */
-
- protected readonly _matriceSignal =signal<Matrice>(transformJsontoMatrice(matrix50));
- 
- 
-  protected async writeMatrice(): Promise<void> {
-    let a=this._adresses.length;
-
-   console.log(this._matriceSignal());
-   
-   
-     
-
-  
-
- 
-}
-
-
-
+    //appelle a la fonction downloadAdressesJson() pour telecharger les datasets
+    if (remaining === 0) {
+      this.downloadAdressesJson(nb);
+    }
+  }
 
   /**
    * Optimization of the routes with the given number of vehicles.
@@ -193,5 +160,31 @@ export class App {
       routes => this._routes.set(routes ?? [])
     );
   }
+  //fonction downloadAdressesJson() pour pour enregistrer les datasets dans un fichiers puis les telecharger
+  private downloadAdressesJson(nb: number): void {
+  const data = JSON.stringify(this._adresses(), null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `adresses_${nb}.json`;
+  a.click();
+
+  window.URL.revokeObjectURL(url);
+}
+
+  _maMatrix=matrix50;
+  _adressesList=adresse50
+
+
+
+  ngOnInit(){
+    console.log(this._maMatrix);
+    console.log(this._adressesList);
+  }
+  
+  
+
 
 }

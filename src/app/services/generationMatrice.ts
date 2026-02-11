@@ -52,10 +52,15 @@ export class adresseToMatrice {
     // Initialize full matrix
     const fullMatrix: Matrice = {
       distances: Array.from({ length: total }, () => Array(total).fill(0)),
+      durations:Array.from({length:total},()=>Array(total).fill(0)),
       destinations: adresses.map(a => ({
         location: [a.lng, a.lat],
         snapped_distance: 0,
       })),
+       sources: adresses.map(a => ({
+        location: [a.lng, a.lat],
+        snapped_distance: 0,
+      }))
     };
 
     let requestCount = 0;

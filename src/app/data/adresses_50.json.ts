@@ -1,4 +1,6 @@
-export const adresse50=[
+import { Adresse } from "./adresse";
+
+export const adresse50:Adresse[]=[
   {
     "lat": 45.236597940157935,
     "lng": 5.628667474568309,

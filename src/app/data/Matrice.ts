@@ -1,4 +1,5 @@
 import * as zod from "zod";
+import { matrix50 } from "./matrix_50_complete";
 
 /**
  * représente une matrice de distances
@@ -6,7 +7,7 @@ import * as zod from "zod";
 
 
 
-export interface Destination{
+export interface LocationSnappedDistance{
   location:number[];
   snapped_distance:number
 }
@@ -14,17 +15,21 @@ export interface Destination{
 // une matrice de distance 
 export interface Matrice {
   distances: number[][];
-  destinations:Destination[];
+  durations:number[][];
+  sources:LocationSnappedDistance[]
+  destinations:LocationSnappedDistance[];
 }
 
-const DestinationSchema=zod.object({
+const LocationSnappedDistanceSchema=zod.object({
   location:zod.array(zod.number()),
   snapped_distance:zod.number()
 })
 
 const matriceSchema = zod.object({
   distances: zod.array(zod.array(zod.number())),
-  destinations:zod.array(DestinationSchema)
+  durations:zod.array(zod.array(zod.number())),
+  sources:zod.array(LocationSnappedDistanceSchema),
+  destinations:zod.array(LocationSnappedDistanceSchema)
 });
 
 
@@ -41,4 +46,10 @@ export function parseMatrice(data: unknown): Matrice {
 
 export function transformJsontoMatrice(data:any):Matrice{
   return JSON.parse(data);
+}
+
+
+export function consoleMatrix():void{
+  console.log(matrix50);
+  console.log("hello");
 }
