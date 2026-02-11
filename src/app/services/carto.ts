@@ -115,31 +115,102 @@ export class Carto {
     )
   }
 
-  /**
-   * ============================================================
-   * STRATÉGIE ADAPTATIVE POUR LA MATRICE DE DISTANCES
-   * ============================================================
-   * - <= 50 adresses : Requête directe
-   * - 51-100 adresses : Découpage en chunks
-   * - > 100 adresses : Clustering adaptatif (rayon → K-means si nécessaire)
-   */
-  public async getDistanceMatrix(adresses: readonly Adresse[]): Promise<{
-    distances: number[][];
-    strategy?: string;
-    clusters?: Adresse[][];
-    clusterCentroids?: Adresse[];
-  }> {
-    const totalAddresses = adresses.length;
+/**
+ * Calcule la matrice de distances routières entre adresses avec métadonnées complètes.
+ */
+public async getDistanceMatrix(adresses: readonly Adresse[]): Promise<{
+  distances: number[][];
+  durations: number[][];
+  sources: Array<{ location: [number, number]; snapped_distance: number }>;
+  destinations: Array<{ location: [number, number]; snapped_distance: number }>;
+  metadata?: any;
+}> {
+  const maxLocationsPerRequest = 50;
+  const totalAddresses = adresses.length;
 
-    // ========== STRATÉGIE 1 : Direct (<=50) ==========
-    if (totalAddresses <= 50) {
-      console.log('Strategy: Direct API call');
-      const locations = adresses.map(a => [a.lng, a.lat]);
+  // Si on a 50 adresses ou moins, on fait une seule requête
+  if (totalAddresses <= maxLocationsPerRequest) {
+    const locations = adresses.map(a => [a.lng, a.lat]);
+    const req$ = this._httpClient.post(
+      'https://api.openrouteservice.org/v2/matrix/driving-car',
+      {
+        locations: locations,
+        metrics: ['distance', 'duration']
+      },
+      {
+        headers: {
+          Authorization: orsKey,
+        }
+      }
+    );
+
+    const result = await firstValueFrom(req$) as any;
+    return {
+      distances: result.distances || [],
+      durations: result.durations || [],
+      sources: result.sources || [],
+      destinations: result.destinations || [],
+      metadata: result.metadata
+    };
+  }
+
+  // Fonction utilitaire pour attendre
+  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+  // Initialiser les matrices complètes
+  const fullDistanceMatrix: number[][] = Array(totalAddresses)
+    .fill(null)
+    .map(() => Array(totalAddresses).fill(0));
+  
+  const fullDurationMatrix: number[][] = Array(totalAddresses)
+    .fill(null)
+    .map(() => Array(totalAddresses).fill(0));
+
+  // Initialiser les sources et destinations
+  const allSources: Array<{ location: [number, number]; snapped_distance: number }> = 
+    Array(totalAddresses).fill(null).map(() => ({ location: [0, 0], snapped_distance: 0 }));
+  const allDestinations: Array<{ location: [number, number]; snapped_distance: number }> = 
+    Array(totalAddresses).fill(null).map(() => ({ location: [0, 0], snapped_distance: 0 }));
+
+  // Calculer le nombre de chunks nécessaires
+  const numChunks = Math.ceil(totalAddresses / maxLocationsPerRequest);
+  
+  let requestCount = 0;
+  const totalRequests = numChunks * numChunks;
+  let lastMetadata: any = null;
+
+  // Traiter chaque combinaison de chunks
+  for (let i = 0; i < numChunks; i++) {
+    for (let j = 0; j < numChunks; j++) {
+      requestCount++;
+      console.log(`Processing request ${requestCount}/${totalRequests}...`);
+
+      const startI = i * maxLocationsPerRequest;
+      const endI = Math.min((i + 1) * maxLocationsPerRequest, totalAddresses);
+      const startJ = j * maxLocationsPerRequest;
+      const endJ = Math.min((j + 1) * maxLocationsPerRequest, totalAddresses);
+
+      const sourceAddresses = adresses.slice(startI, endI);
+      const destAddresses = adresses.slice(startJ, endJ);
+
+      const allLocations = [
+        ...sourceAddresses.map(a => [a.lng, a.lat]),
+        ...destAddresses.map(a => [a.lng, a.lat])
+      ];
+
+      const sources = Array.from({ length: sourceAddresses.length }, (_, idx) => idx);
+      const destinations = Array.from(
+        { length: destAddresses.length }, 
+        (_, idx) => idx + sourceAddresses.length
+      );
+
       const req$ = this._httpClient.post(
         'https://api.openrouteservice.org/v2/matrix/driving-car',
         {
-          locations: locations,
-          metrics: ['distance']
+          locations: allLocations,
+          sources: sources,
+          destinations: destinations,
+          metrics: ['distance', 'duration']
         },
         {
           headers: {
@@ -148,301 +219,54 @@ export class Carto {
         }
       );
 
-      const result = await firstValueFrom(req$) as { distances: number[][] };
-      return { 
-        distances: result.distances,
-        strategy: 'direct'
-      };
-    }
+      try {
+        const result = await firstValueFrom(req$) as any;
 
-    // ========== STRATÉGIE 2 : decoupage (51-100) ==========
-    if (totalAddresses <= 100) {
-      console.log('Strategie: decoupage (2x2 = 4 requests)');
-      return {
-        distances: (await this.getDistanceMatrixChunked(adresses)).distances,
-        strategy: 'chunked'
-      };
-    }
-
-    // ========== STRATÉGIE 3 : Clustering adaptatif (>100) ==========
-    console.log('Strategy: Adaptive clustering');
-    return this.getDistanceMatrixAdaptive(adresses);
-  }
-
-  /**
-   * STRATÉGIE 2 : Découpage en chunks pour 51-100 adresses
-   */
-  private async getDistanceMatrixChunked(adresses: readonly Adresse[]): Promise<{
-    distances: number[][];
-  }> {
-    const maxLocationsPerRequest = 50;
-    const totalAddresses = adresses.length;
-    //sleep pour eviter la limite de nombre de requettes par secondes
-    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-    //initialiser la matrice a 0
-    const fullMatrix: number[][] = Array(totalAddresses)
-      .fill(null)
-      .map(() => Array(totalAddresses).fill(0));
-
-      //calculer le nombre de decoupes
-    const numChunks = Math.ceil(totalAddresses / maxLocationsPerRequest);
-    
-    let requestCount = 0;
-    const totalRequests = numChunks * numChunks;
-
-    for (let i = 0; i < numChunks; i++) {
-      for (let j = 0; j < numChunks; j++) {
-        requestCount++;
-        console.log(`  Chunked request ${requestCount}/${totalRequests}...`);
-
-        const startI = i * maxLocationsPerRequest;
-        const endI = Math.min((i + 1) * maxLocationsPerRequest, totalAddresses);
-        const startJ = j * maxLocationsPerRequest;
-        const endJ = Math.min((j + 1) * maxLocationsPerRequest, totalAddresses);
-
-        const sourceAddresses = adresses.slice(startI, endI);
-        const destAddresses = adresses.slice(startJ, endJ);
-
-        const allLocations = [
-          ...sourceAddresses.map(a => [a.lng, a.lat]),
-          ...destAddresses.map(a => [a.lng, a.lat])
-        ];
-
-        const sources = Array.from({ length: sourceAddresses.length }, (_, idx) => idx);
-        const destinations = Array.from(
-          { length: destAddresses.length }, 
-          (_, idx) => idx + sourceAddresses.length
-        );
-
-        const req$ = this._httpClient.post(
-          'https://api.openrouteservice.org/v2/matrix/driving-car',
-          {
-            locations: allLocations,
-            sources: sources,
-            destinations: destinations,
-            metrics: ['distance']
-          },
-          {
-            headers: {
-              Authorization: orsKey,
-            }
-          }
-        );
-
-        try {
-          const result = await firstValueFrom(req$) as { distances: number[][] };
-
-          for (let localI = 0; localI < result.distances.length; localI++) {
-            for (let localJ = 0; localJ < result.distances[localI].length; localJ++) {
-              const globalI = startI + localI;
-              const globalJ = startJ + localJ;
-              fullMatrix[globalI][globalJ] = result.distances[localI][localJ];
-            }
-          }
-
-          if (requestCount < totalRequests) {
-            await sleep(1500);
-          }
-        } catch (error) {
-          console.error(`Error on chunked request ${requestCount}:`, error);
-          throw error;
+        if (result.metadata) {
+          lastMetadata = result.metadata;
         }
-      }
-    }
-    return { distances: fullMatrix };
-  }
 
-  /**
-   * STRATÉGIE 3 : Clustering adaptatif (>100 adresses)
-   * Essaie d'abord clustering par rayon (plus précis)
-   * Si trop de clusters, bascule sur K-means
-   */
-  private async getDistanceMatrixAdaptive(adresses: readonly Adresse[]): Promise<{
-    distances: number[][];
-    strategy: string;
-    clusters: Adresse[][];
-    clusterCentroids: Adresse[];
-  }> {
-    const targetClusters = 50; // Limite pour une seule requête API
-    let radius = 300; // Commencer avec un rayon de 300m
-    let clusters: Adresse[][] = [];
-
-    // Essayer d'augmenter le rayon jusqu'à avoir <= 50 clusters
-    while (radius <= 2000) {
-      clusters = this.clusterByRadius(adresses, radius);
-      
-      console.log(`Testing radius ${radius}m → ${clusters.length} clusters`);
-      
-      if (clusters.length <= targetClusters) {
-        console.log(` Using radius clustering (${radius}m, ${clusters.length} clusters) - PRECISE`);
-        const result = await this.getMatrixFromClusters(adresses, clusters);
-        return {
-          ...result,
-          strategy: `radius-${radius}m-${clusters.length}clusters`,
-          clusters,
-          clusterCentroids: clusters.map(c => this.getClusterCentroid(c))
-        };
-      }
-      radius += 100;
-    }
-
-    // Si aucun rayon ne fonctionne, forcer K-means
-    const result = await this.getMatrixFromClusters(adresses, clusters);
-    return {
-      ...result,
-      strategy: `kmeans-${targetClusters}clusters`,
-      clusters,
-      clusterCentroids: clusters.map(c => this.getClusterCentroid(c))
-    };
-  }
-
-  /**
-   * Clustering par rayon (plus précis)
-   */
-  private clusterByRadius(
-    adresses: readonly Adresse[],
-    radiusMeters: number
-  ): Adresse[][] {
-    const clusters: Adresse[][] = [];
-    //indices des adresses déjà traitées pour évite de les regrouper plusieurs fois
-    const visited = new Set<number>();
-
-    for (let i = 0; i < adresses.length; i++) {
-      //Si l’adresse i est deja dans un cluster on la saute
-      if (visited.has(i)) continue;
-      //On démarre un cluster avec ladresse i (elle devient le centre de référence)
-      const cluster: Adresse[] = [adresses[i]];
-      visited.add(i);
-
-      //Conversion en point Geo
-      const point1 = turf.point([adresses[i].lng, adresses[i].lat]);
-      
-      //Comparaison avec les autres adresses
-      for (let j = i + 1; j < adresses.length; j++) {
-        if (visited.has(j)) continue;
-        //Calcul de la distance(Turf.js)
-        const point2 = turf.point([adresses[j].lng, adresses[j].lat]);
-        const distance = turf.distance(point1, point2, { units: 'meters' });
-
-        if (distance <= radiusMeters) {
-          cluster.push(adresses[j]);
-          visited.add(j);
+        // Remplir les matrices
+        for (let localI = 0; localI < result.distances.length; localI++) {
+          for (let localJ = 0; localJ < result.distances[localI].length; localJ++) {
+            const globalI = startI + localI;
+            const globalJ = startJ + localJ;
+            fullDistanceMatrix[globalI][globalJ] = result.distances[localI][localJ];
+            fullDurationMatrix[globalI][globalJ] = result.durations[localI][localJ];
+          }
         }
-      }
 
-      clusters.push(cluster);
-    }
-
-    return clusters;
-  }
-
-  /**
-   * K-means clustering (quand le rayon ne suffit pas)
-   */
-  private kMeansClustering(
-    adresses: readonly Adresse[],
-    k: number
-  ): Adresse[][] {
-    ////Transformation des adresses en points GeoJSON
-    const points = turf.featureCollection(
-      adresses.map((a, i) => turf.point([a.lng, a.lat], { index: i }))
-    );
-    //Affecte chaque point au centroïde le plus proche
-    const clustered = turf.clustersKmeans(points, { numberOfClusters: k });
-
-    //Initialisation des clusters vides
-    const clusters: Adresse[][] = Array(k).fill(null).map(() => []);
-    //Répartition des adresses dans les clusters
-    //clusterIndex : numéro du cluster
-    //addrIndex : index de l’adresse originale
-    clustered.features.forEach((feature) => {
-      const clusterIndex = feature.properties!.cluster;
-      const addrIndex = feature.properties!['index'];
-      if (clusterIndex !== undefined && addrIndex !== undefined) {
-        clusters[clusterIndex].push(adresses[addrIndex]);
-      }
-    });
-    //Nettoyage des clusters vides
-    return clusters.filter(c => c.length > 0);
-  }
-
-  /**
-   * Calculer la matrice à partir de clusters
-   * regroupe des adresses en k clusters géographiques 
-   * en utilisant l’algorithme K-Means (chaque adresse est affectée au centre le plus proche)
-   */
-  private async getMatrixFromClusters(
-    adresses: readonly Adresse[],
-    clusters: Adresse[][]
-  ): Promise<{ distances: number[][] }> {
-    // Calculer centroïdes
-    const centroids = clusters.map(c => this.getClusterCentroid(c));
-    // Matrice entre centroïdes (récursif, utilisera stratégie 1 ou 2)
-    const centroidResult = await this.getDistanceMatrix(centroids);
-    const centroidMatrix = centroidResult.distances;
-
-    // Reconstruire matrice complète
-    const fullMatrix: number[][] = Array(adresses.length)
-      .fill(null)
-      .map(() => Array(adresses.length).fill(0));
-
-    // Mapping: index d'adresse → index de cluster
-    const addressToCluster: number[] = [];
-    for (let clusterIdx = 0; clusterIdx < clusters.length; clusterIdx++) {
-      for (const addr of clusters[clusterIdx]) {
-        const addrIdx = adresses.indexOf(addr);
-        addressToCluster[addrIdx] = clusterIdx;
-      }
-    }
-
-    // Remplir la matrice complète
-    for (let i = 0; i < adresses.length; i++) {
-      for (let j = 0; j < adresses.length; j++) {
-        const clusterI = addressToCluster[i];
-        const clusterJ = addressToCluster[j];
-
-        if (clusterI === clusterJ) {
-          // Même cluster = distance euclidienne (vol d'oiseau)
-          fullMatrix[i][j] = this.getEuclideanDistance(adresses[i], adresses[j]);
-        } else {
-          // Différents clusters = distance entre centroïdes (précise)
-          fullMatrix[i][j] = centroidMatrix[clusterI][clusterJ];
+        // Mettre à jour les sources
+        for (let localI = 0; localI < result.sources.length; localI++) {
+          const globalI = startI + localI;
+          allSources[globalI] = result.sources[localI];
         }
+
+        // Mettre à jour les destinations
+        for (let localJ = 0; localJ < result.destinations.length; localJ++) {
+          const globalJ = startJ + localJ;
+          allDestinations[globalJ] = result.destinations[localJ];
+        }
+
+        if (requestCount < totalRequests) {
+          await sleep(1500);
+        }
+      } catch (error) {
+        console.error(`Error on request ${requestCount}:`, error);
+        throw error;
       }
     }
-
-    console.log(`  ✅ Distance matrix completed!`);
-    return { distances: fullMatrix };
   }
 
-  /**
-   * calcule le centroïde géographique d’un cluster d’adresses
-   * et le renvoie sous forme d’un objet Adresse
-   */
-  private getClusterCentroid(cluster: Adresse[]): Adresse {
-    if (cluster.length === 1) return cluster[0];
-    
-    const points = turf.featureCollection(
-      cluster.map(a => turf.point([a.lng, a.lat]))
-    );
-    const centroid = turf.center(points);
-    
-    return {
-  ...cluster[0],
-  lat: centroid.geometry.coordinates[1],
-  lng: centroid.geometry.coordinates[0]
-};
-  }
-
-  /**
-   * Distance euclidienne entre deux adresses (en mètres)
-   */
-  private getEuclideanDistance(a1: Adresse, a2: Adresse): number {
-    const point1 = turf.point([a1.lng, a1.lat]);
-    const point2 = turf.point([a2.lng, a2.lat]);
-    return turf.distance(point1, point2, { units: 'meters' });
-  }
+  console.log('Distance matrix completed!');
+  return { 
+    distances: fullDistanceMatrix,
+    durations: fullDurationMatrix,
+    sources: allSources,
+    destinations: allDestinations,
+    metadata: lastMetadata
+  };
+}
 }
 
 /**

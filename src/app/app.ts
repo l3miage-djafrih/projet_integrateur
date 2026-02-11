@@ -114,10 +114,10 @@ export class App {
     console.log(`All ${nb} addresses generated.`);
 
     //appelle a la fonction downloadAdressesJson() pour telecharger les datasets
-   /*if (remaining === 0) {
+   if (remaining === 0) {
   this.downloadAdressesJson(nb);
   await this.downloadMatrix(nb);
-}*/
+}
   }
 
   /**
@@ -174,19 +174,27 @@ export class App {
 
 private async downloadMatrix(nb: number): Promise<void> {
   try {
-    const result = await this._srvCarto.getDistanceMatrix(this._adresses());
-    console.log(`Matrix calculated using strategy: ${result.strategy}`);
+    const matrixResult = await this._srvCarto.getDistanceMatrix(this._adresses());
+    
+    // Analyser la qualité du snapping
+    const avgSnappedDistance = matrixResult.sources.reduce((sum: number, s: any) => sum + s.snapped_distance, 0) / matrixResult.sources.length;
+    console.log(`Average snapped distance: ${avgSnappedDistance.toFixed(2)}m`);
+    
+    if (avgSnappedDistance > 100) {
+      console.warn('⚠️ High snapped distances detected! Some addresses may be far from roads.');
+    }
+
     const data = JSON.stringify({
-      distances: result.distances,
-      metadata: {
+      distances: matrixResult.distances,
+      durations: matrixResult.durations,
+      sources: matrixResult.sources,
+      destinations: matrixResult.destinations,
+      metadata: matrixResult.metadata,
+      statistics: {
         totalAddresses: nb,
-        strategy: result.strategy,
-        ...(result.clusters && { 
-          clusterInfo: {
-            numClusters: result.clusters.length,
-            clusterSizes: result.clusters.map(c => c.length)
-          }
-        })
+        avgSnappedDistance: avgSnappedDistance,
+        maxSnappedDistance: Math.max(...matrixResult.sources.map((s: any) => s.snapped_distance)),
+        timestamp: new Date().toISOString()
       }
     }, null, 2);
 
@@ -195,7 +203,7 @@ private async downloadMatrix(nb: number): Promise<void> {
 
     const a = document.createElement('a');
     a.href = url;
-    a.download = `matrix_${nb}.json`;
+    a.download = `matrix_${nb}_complete.json`;
     a.click();
 
     window.URL.revokeObjectURL(url);
