@@ -8,7 +8,7 @@ import { FormsModule } from '@angular/forms';
 import { Adresse } from './data/adresse';
 import { OptimizationResult } from './services/OptimizationResult';
 import { CommonModule } from '@angular/common';
-import { adressToMatrice } from './services/generationMatrice';
+import { adresseToMatrice } from './services/generationMatrice';
 import { Matrice } from './data/Matrice';
 const lastAdressesKey = "adresses";
 const lastOptimizationResponseKey = "lastOptimizationResponse";
@@ -29,7 +29,7 @@ const lastRoutesKey = "lastRoutes";
 export class App {
   // Services
   private readonly _srvCarto = inject(Carto);
-  private readonly _genMatrice=inject(adressToMatrice);
+  private readonly _genMatrice=inject(adresseToMatrice);
 
   // Local state
   private readonly bounds = signal<LatLngBoundsLiteral>([[45.1, 5.6], [45.3, 5.9]]); // Rectangle autour de Grenoble
@@ -140,11 +140,15 @@ export class App {
     let a=this._adresses.length;
     let response;
     if(a<=50){
-       response = await this._genMatrice.generateMatriceFromAdresses(this._adresses());
+       response = await this._genMatrice.getDistanceMatrix(this._adresses());
     }
     else if(a>50 && a<100){
-      response=await this._genMatrice.getDistanceMatrixChunked(this._adresses());
+      response=await this._genMatrice.getDistanceMatrix(this._adresses());
     }
+    else{
+      response=await this._genMatrice.getDistanceMatrix(this._adresses());
+    }
+     
    
      
 
