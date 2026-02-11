@@ -36,3 +36,9 @@ export function parseMatrice(data: unknown): Matrice {
   return matriceSchema.parse(data);
   
 }
+
+
+
+export function transformJsontoMatrice(data:any):Matrice{
+  return JSON.parse(data);
+}

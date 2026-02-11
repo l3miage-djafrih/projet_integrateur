@@ -1,5 +1,5 @@
 import { Injectable, signal, computed, inject } from "@angular/core";
-import { Matrice, parseMatrice } from "../data/Matrice";
+import { Matrice, parseMatrice, transformJsontoMatrice } from "../data/Matrice";
 import { Adresse } from "../data/adresse";
 import { orsKey } from "./orsKey";
 import { HttpClient } from "@angular/common/http";
@@ -151,7 +151,7 @@ export class adressToMatrice {
         );
         try {
           const result = await firstValueFrom(req$).then(
-            parseMatrice
+            transformJsontoMatrice
           )
 
 
