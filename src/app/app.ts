@@ -87,38 +87,110 @@ export class App {
   /**
    * Generate random points within the bounding box and fetch their addresses.
    */
-  protected async generateAdresses(nb: number): Promise<void> {
-    const bounds = this.bounds();
-    const southWest = bounds[0];
-    const northEast = bounds[1];
-
-    this._adresses.set([]);
-    this._routes.set([]);
-    this._optimizationResult.set(undefined);
-    let remaining = nb;
-
-    // Boucle tant qu'on a pas le bon nombre d'adresse ?
-    while (remaining > 0) {
-      const points = Array.from({ length: remaining }, () => ({
-        lat: Math.random() * (northEast[0] - southWest[0]) + southWest[0],
-        lng: Math.random() * (northEast[1] - southWest[1]) + southWest[1],
-      }));
-      await this._srvCarto.getAdressesFromCoordinates(points).then((adresses) => {
-        // Il faut filtrer les adresses "not found"
-        console.log('Adresses fetched:', adresses);
-        this._adresses.update(L => [...L, ...adresses]);
-        remaining = nb - this._adresses().length;
-        console.log('Remaining:', remaining);
-      });
-    }
-    console.log(`All ${nb} addresses generated.`);
-
-    //appelle a la fonction downloadAdressesJson() pour telecharger les datasets
-   if (remaining === 0) {
-  this.downloadAdressesJson(nb);
-  await this.downloadMatrix(nb);
-}
+ /**
+ * Filtre les adresses inaccessibles (trop loin des routes).
+ * Met à jour _adresses avec seulement les adresses accessibles.
+ * @returns Le nombre d'adresses supprimées
+ */
+private async filterInaccessibleAddresses(): Promise<number> {
+  const allAddresses = this._adresses();
+  
+  if (allAddresses.length === 0) {
+    console.warn('⚠️ No addresses to filter');
+    return 0;
   }
+
+  console.log(`🔍 Checking accessibility for ${allAddresses.length} addresses...`);
+  
+  try {
+    const matrixResult = await this._srvCarto.getDistanceMatrix(allAddresses);
+    const MAX_SNAPPED_DISTANCE = 150; // 150m max
+    
+    const accessibleAddresses: Adresse[] = [];
+    let removedCount = 0;
+    
+    matrixResult.sources.forEach((source, index) => {
+      if (source.snapped_distance <= MAX_SNAPPED_DISTANCE) {
+        accessibleAddresses.push(allAddresses[index]);
+      } else {
+        removedCount++;
+        console.warn(
+          `⏭️ Removed: "${allAddresses[index].name}" ` +
+          `(${source.snapped_distance.toFixed(0)}m from road)`
+        );
+      }
+    });
+    
+    // Mettre à jour avec seulement les adresses accessibles
+    this._adresses.set(accessibleAddresses);
+    
+    console.log(`✅ ${accessibleAddresses.length}/${allAddresses.length} addresses are accessible`);
+    
+    return removedCount;
+    
+  } catch (err) {
+    console.error('❌ Error checking accessibility:', err);
+    throw err;
+  }
+}
+
+/**
+ * Génère un nombre donné d'adresses aléatoires dans la zone,
+ * puis filtre celles qui sont inaccessibles par la route.
+ */
+protected async generateAdresses(nb: number): Promise<void> {
+  const bounds = this.bounds();
+  const southWest = bounds[0];
+  const northEast = bounds[1];
+
+  // Réinitialisation
+  this._adresses.set([]);
+  this._routes.set([]);
+  this._optimizationResult.set(undefined);
+  
+  let remaining = nb;
+
+  console.log(`🎯 Target: ${nb} addresses\n`);
+
+  // ÉTAPE 1: Générer les adresses
+  while (remaining > 0) {
+    const points = Array.from({ length: remaining }, () => ({
+      lat: Math.random() * (northEast[0] - southWest[0]) + southWest[0],
+      lng: Math.random() * (northEast[1] - southWest[1]) + southWest[1],
+    }));
+    
+    await this._srvCarto.getAdressesFromCoordinates(points).then((adresses) => {
+      console.log(`📬 Fetched ${adresses.length} addresses`);
+      this._adresses.update(L => [...L, ...adresses]);
+      remaining = nb - this._adresses().length;
+      console.log(`📊 Progress: ${this._adresses().length}/${nb} (remaining: ${remaining})`);
+    });
+  }
+  
+  const generatedCount = this._adresses().length;
+  console.log(`✅ All ${generatedCount} addresses generated.\n`);
+
+  // ÉTAPE 2: Filtrer les adresses inaccessibles
+  const removedCount = await this.filterInaccessibleAddresses();
+  
+  // ÉTAPE 3: Afficher les résultats
+  console.log(`\n📊 Final Results:`);
+  console.log(`  🎯 Requested: ${nb}`);
+  console.log(`  📍 Generated: ${generatedCount}`);
+  console.log(`  ✅ Accessible: ${this._adresses().length}`);
+  console.log(`  ❌ Removed: ${removedCount}`);
+  console.log(`  📈 Keep rate: ${(this._adresses().length/nb*100).toFixed(1)}%`);
+  
+  if (this._adresses().length === 0) {
+    console.error('\n❌ No accessible addresses found!');
+    return;
+  }
+
+  // ÉTAPE 4: Téléchargement
+  //this.downloadAdressesJson(this._adresses().length);
+  //await this.downloadMatrix(this._adresses().length);
+  
+}
 
   /**
    * Optimization of the routes with the given number of vehicles.

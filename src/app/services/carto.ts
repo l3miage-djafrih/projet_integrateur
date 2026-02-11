@@ -249,7 +249,7 @@ public async getDistanceMatrix(adresses: readonly Adresse[]): Promise<{
         }
 
         if (requestCount < totalRequests) {
-          await sleep(1500);
+          await sleep(3000);
         }
       } catch (error) {
         console.error(`Error on request ${requestCount}:`, error);
