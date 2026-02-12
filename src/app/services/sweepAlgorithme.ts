@@ -17,6 +17,7 @@ const angle = turf.bearing(depot, client);*/
 
 
 public constructionDesAngles(adresses:readonly Adresse[]):AnglesClients{
+    // depot complétement aléatoire 
     const depot =turf.point([45.21290729674243,5.768314039594716]);
 
   
@@ -44,7 +45,7 @@ let mesAngles: AnglesClients = {
         )
 
     })
-    // à ce stade lsiteAngles représente une liste d'angles ,on doit ensuite la trier en ordre croissant 
+  
 
    mesAngles.angles.forEach((v)=>{
     console.log("l'adresse ["+v.adresse.lat+","+v.adresse.lng+"]correspent à l'angle"+v.angle)
@@ -66,7 +67,7 @@ public normalizeAngle(angle: number): number {
  * @returns une liste qui contient des chunks ,chaque chunks contient 50 adresses ,ce qui représente un appel api optimisation 
  */
 public constructionChunkes(listeAngles:AnglesClients):Adresse[][]{
-   const chunkSize = 20;
+   const chunkSize = 50;
     const chunks: Adresse[][] = []; // initialisation vide
 
 
@@ -85,7 +86,7 @@ public constructionChunkes(listeAngles:AnglesClients):Adresse[][]{
 
     const adressesTries=anglesCroissants.map((v)=>v.adresse)
 // construction des chunks 
-    for(let i=0;anglesCroissants.length; i += chunkSize){
+    for(let i=0;i<anglesCroissants.length; i += chunkSize){
         chunks.push(adressesTries.slice(i,i+chunkSize))
     }
 

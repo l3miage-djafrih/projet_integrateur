@@ -8,6 +8,9 @@ import { FormsModule } from '@angular/forms';
 import { Adresse } from './data/adresse';
 import { OptimizationResult } from './services/OptimizationResult';
 import { Sweep } from './services/sweepAlgorithme';
+import { adresse50 } from './data/dataSet50Adresses/adresse_47_complete';
+import { adresse400 } from './data/dataSet400Adresses/adresses_377._complete';
+import { adresse100 } from './data/dataSet100Adresses/adresse_96_complete';
 
 const lastAdressesKey = "adresses";
 const lastOptimizationResponseKey = "lastOptimizationResponse";
@@ -28,6 +31,10 @@ export class App {
   private readonly _srvCarto = inject(Carto);
   private readonly _sweepService=inject(Sweep)
 
+ 
+
+  
+
   // Local state
   private readonly bounds = signal<LatLngBoundsLiteral>([[45.1, 5.6], [45.3, 5.9]]); // Rectangle autour de Grenoble
   // Options de la carte Leaflet, à conserver en tant que constante car c'est ainsi que la bibliothèque gère cette entrée... 
@@ -38,8 +45,8 @@ export class App {
   };
 
   public readonly _adresses = signal<readonly Adresse[]>(
-    localStorage.getItem(lastAdressesKey) ? JSON.parse(localStorage.getItem(lastAdressesKey)!) : []
-  );
+    adresse100) 
+  
   private readonly _optimizationResult: WritableSignal<undefined | OptimizationResult>;
   private readonly _routes = signal<ReadonlyArray<ReadonlyArray<LatLngTuple>>>(
     localStorage.getItem(lastRoutesKey) ? JSON.parse(localStorage.getItem(lastRoutesKey)!) : []
@@ -50,7 +57,31 @@ export class App {
   // On doit malheureusement transmettre des tableaux mutables...
   // Encore une erreur des concepteurs de cette bibliothèque...
   protected readonly layers: Signal<Layer[]>;
-  private readonly colors = ['red', 'green', 'blue', 'orange',  'cyan'];
+  private readonly colors = ['red',
+  'green',
+  'blue',
+  'orange',
+  'cyan',
+  'purple',
+  'magenta',
+  'yellow',
+  'lime',
+  'teal',
+  'pink',
+  'brown',
+  'black',
+  'gray',
+  'navy',
+  'olive',
+  'maroon',
+  'gold',
+  'coral',
+  'darkred',
+  'darkblue',
+  'darkgreen',
+  'darkorange',
+  'darkviolet',
+  'deepskyblue'];
   constructor() {
     const back = tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '...' });
     const bboxRectangle: Signal<Rectangle> = computed<Rectangle>(
@@ -308,46 +339,54 @@ private async downloadMatrix(nb: number): Promise<void> {
 
 
 public async megaOptimization(): Promise<void> {
-  const MAX_ROUTES_API = 3500; // Limite ORS
-  const VEHICULES = 3;         // Nb de véhicules par optimisation
+  const MAX_ROUTES_API = 3500;
+  const VEHICULES = 3;
   const MAX_ADDRESSES_PER_CHUNK = Math.floor(MAX_ROUTES_API / VEHICULES);
 
-  // Étape 1 : Construction des chunks avec ton Sweep Service
-  const chunks = this._sweepService.constructionChunkes(
-    this._sweepService.constructionDesAngles(this._adresses())
-  );
+  // clear previous routes
+  this._routes.set([]);
+
+  // parking = last address
+  const parking = this._adresses().at(-1)!;
+
+  // STEP 1: sweep
+  const angles = this._sweepService.constructionDesAngles(this._adresses());
+  const chunks = this._sweepService.constructionChunkes(angles);
 
   console.log(`🔹 ${chunks.length} chunks générés par Sweep.`);
 
-  // Étape 2 : Optimisation chunk par chunk
+  // STEP 2: optimize each chunk
   for (let i = 0; i < chunks.length; i++) {
-    let chunk = chunks[i];
+    const chunk = chunks[i];
 
-    // Si le chunk dépasse la limite API, on le divise en sous-chunks
+    // if chunk too big → split
     if (chunk.length > MAX_ADDRESSES_PER_CHUNK) {
-      console.warn(`⚠️ Chunk ${i} trop grand (${chunk.length} adresses). Découpage en sous-chunks...`);
+      console.warn(
+        `⚠️ Chunk ${i} trop grand (${chunk.length}). Découpage...`
+      );
+
       const subChunks: Adresse[][] = [];
       for (let j = 0; j < chunk.length; j += MAX_ADDRESSES_PER_CHUNK) {
         subChunks.push(chunk.slice(j, j + MAX_ADDRESSES_PER_CHUNK));
       }
-      // Optimisation de chaque sous-chunk
-      for (const sub of subChunks) {
-        await this.optimizeRoutes(VEHICULES, 10000, sub);
-        // Petite pause pour éviter de saturer le navigateur et l'API
-        await new Promise(r => setTimeout(r, 50));
+
+      for (const subChunk of subChunks) {
+        const chunkWithParking = [...subChunk, parking];
+        await this.optimizeRoutes(VEHICULES, 10000, chunkWithParking);
+        await new Promise(r => setTimeout(r, 3000));
       }
+
     } else {
-      // Chunk ok, on l'optimise directement
-      await this.optimizeRoutes(VEHICULES, 10000, chunk);
-      await new Promise(r => setTimeout(r, 50));
+      const chunkWithParking = [...chunk, parking];
+      await this.optimizeRoutes(VEHICULES, 10000, chunkWithParking);
+      await new Promise(r => setTimeout(r, 3000));
     }
 
     console.log(`✅ Chunk ${i + 1}/${chunks.length} optimisé.`);
   }
 
-  console.log("🎯 Toutes les optimisations terminées !");
+  console.log('🎯 Toutes les optimisations terminées !');
 }
-
 
    
 
