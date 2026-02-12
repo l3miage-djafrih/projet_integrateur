@@ -7,6 +7,7 @@ import { getMarker } from './utils/marker';
 import { FormsModule } from '@angular/forms';
 import { Adresse } from './data/adresse';
 import { OptimizationResult } from './services/OptimizationResult';
+import { Sweep } from './services/sweepAlgorithme';
 
 const lastAdressesKey = "adresses";
 const lastOptimizationResponseKey = "lastOptimizationResponse";
@@ -25,6 +26,7 @@ const lastRoutesKey = "lastRoutes";
 export class App {
   // Services
   private readonly _srvCarto = inject(Carto);
+  private readonly _sweepService=inject(Sweep)
 
   // Local state
   private readonly bounds = signal<LatLngBoundsLiteral>([[45.1, 5.6], [45.3, 5.9]]); // Rectangle autour de Grenoble
@@ -204,7 +206,7 @@ protected async generateAdresses(nb: number): Promise<void> {
     if (adresses.length === 0) {
       console.warn('No addresses to optimize.');
       return;
-    }
+    }               // l'appel à la fonction d'optimization se fait ici 
     this._srvCarto.optimize({
       nbVehicules,
       maxTimePerVehicule,
@@ -230,6 +232,13 @@ protected async generateAdresses(nb: number): Promise<void> {
       routes => this._routes.set(routes ?? [])
     );
   }
+
+
+
+
+
+
+
   //fonction downloadAdressesJson() pour enregistrer les adresses dans un fichiers puis les telecharger
   private downloadAdressesJson(nb: number): void {
   const data = JSON.stringify(this._adresses(), null, 2);
@@ -243,6 +252,11 @@ protected async generateAdresses(nb: number): Promise<void> {
 
   window.URL.revokeObjectURL(url);
 }
+
+
+
+
+// téléchargement de la matirce comme fichier JSON
 
 private async downloadMatrix(nb: number): Promise<void> {
   try {
@@ -283,4 +297,10 @@ private async downloadMatrix(nb: number): Promise<void> {
     console.error("Matrix error:", err);
   }
 }
+
+
+/**
+ * je vais définir ma liste d'angles que je vais trier en ordre croissant ensuite je vais générer des chunks
+ */
+
 }
