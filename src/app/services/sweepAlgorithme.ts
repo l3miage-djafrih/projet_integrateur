@@ -16,9 +16,9 @@ const client = turf.point([lng, lat]);
 const angle = turf.bearing(depot, client);*/
 
 
-public constructionDesAngles(adresses:readonly Adresse[]):AnglesClients{
+public constructionDesAngles(adresses:readonly Adresse[],parking:Adresse):AnglesClients{
     // depot complétement aléatoire 
-    const depot =turf.point([45.21290729674243,5.768314039594716]);
+    const depot =turf.point([parking.lat,parking.lng]);
 
   
 

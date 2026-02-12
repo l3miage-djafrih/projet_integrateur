@@ -338,9 +338,9 @@ private async downloadMatrix(nb: number): Promise<void> {
 
 
 
-public async megaOptimization(): Promise<void> {
+public async megaOptimization(vehicules:number): Promise<void> {
   const MAX_ROUTES_API = 3500;
-  const VEHICULES = 3;
+  const VEHICULES = vehicules;
   const MAX_ADDRESSES_PER_CHUNK = Math.floor(MAX_ROUTES_API / VEHICULES);
 
   // clear previous routes
@@ -350,7 +350,7 @@ public async megaOptimization(): Promise<void> {
   const parking = this._adresses().at(-1)!;
 
   // STEP 1: sweep
-  const angles = this._sweepService.constructionDesAngles(this._adresses());
+  const angles = this._sweepService.constructionDesAngles(this._adresses(),parking);
   const chunks = this._sweepService.constructionChunkes(angles);
 
   console.log(`🔹 ${chunks.length} chunks générés par Sweep.`);
@@ -372,7 +372,22 @@ public async megaOptimization(): Promise<void> {
 
       for (const subChunk of subChunks) {
         const chunkWithParking = [...subChunk, parking];
-        await this.optimizeRoutes(VEHICULES, 10000, chunkWithParking);
+        let vehiculesNecessaires=1;
+        let result=await this.optimizeRoutes(vehiculesNecessaires, 10000, chunkWithParking);
+        while(result===undefined){
+          if(vehiculesNecessaires>3){
+            console.log("le chunks ne pourra pas se desservie avec 3 livreurs ,on va passer au prochain");
+            break;
+          }
+          else if(vehicules==0){
+            console.log("il faut ajouter des livreurs ");
+          }
+          else{
+          vehiculesNecessaires=vehiculesNecessaires+1;
+          result=await this.optimizeRoutes(vehiculesNecessaires+1,10000,chunk)
+          }
+
+        }
         await new Promise(r => setTimeout(r, 3000));
       }
 
