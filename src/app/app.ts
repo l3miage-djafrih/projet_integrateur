@@ -37,7 +37,7 @@ export class App {
     center: latLng(45.188529, 5.724524), // Coordonnée de Grenoble
   };
 
-  private readonly _adresses = signal<readonly Adresse[]>(
+  public readonly _adresses = signal<readonly Adresse[]>(
     localStorage.getItem(lastAdressesKey) ? JSON.parse(localStorage.getItem(lastAdressesKey)!) : []
   );
   private readonly _optimizationResult: WritableSignal<undefined | OptimizationResult>;
@@ -198,11 +198,12 @@ protected async generateAdresses(nb: number): Promise<void> {
    * Optimization of the routes with the given number of vehicles.
    * The steps are provided by the adresses signal attribute.
    */
-  protected optimizeRoutes(
+   protected async optimizeRoutes(
     nbVehicules: number,
-    maxTimePerVehicule: number
-  ): void {
-    const adresses = this._adresses();
+    maxTimePerVehicule: number,
+    adresses:readonly Adresse[]
+  ): Promise<void> {
+    
     if (adresses.length === 0) {
       console.warn('No addresses to optimize.');
       return;
@@ -210,7 +211,7 @@ protected async generateAdresses(nb: number): Promise<void> {
     this._srvCarto.optimize({
       nbVehicules,
       maxTimePerVehicule,
-      adresses: adresses.slice(0, -1),
+      adresses: adresses,
       parking: adresses.at(-1)!
     }).catch(
       err => {
@@ -228,9 +229,10 @@ protected async generateAdresses(nb: number): Promise<void> {
           )
         )
       }
-    ).then(
-      routes => this._routes.set(routes ?? [])
-    );
+    ).then(newRoutes => {
+    if (!newRoutes) return;
+    this._routes.update(oldRoutes => [...oldRoutes, ...newRoutes]);
+});
   }
 
 
@@ -302,5 +304,58 @@ private async downloadMatrix(nb: number): Promise<void> {
 /**
  * je vais définir ma liste d'angles que je vais trier en ordre croissant ensuite je vais générer des chunks
  */
+
+
+
+public async megaOptimization(): Promise<void> {
+  const MAX_ROUTES_API = 3500; // Limite ORS
+  const VEHICULES = 3;         // Nb de véhicules par optimisation
+  const MAX_ADDRESSES_PER_CHUNK = Math.floor(MAX_ROUTES_API / VEHICULES);
+
+  // Étape 1 : Construction des chunks avec ton Sweep Service
+  const chunks = this._sweepService.constructionChunkes(
+    this._sweepService.constructionDesAngles(this._adresses())
+  );
+
+  console.log(`🔹 ${chunks.length} chunks générés par Sweep.`);
+
+  // Étape 2 : Optimisation chunk par chunk
+  for (let i = 0; i < chunks.length; i++) {
+    let chunk = chunks[i];
+
+    // Si le chunk dépasse la limite API, on le divise en sous-chunks
+    if (chunk.length > MAX_ADDRESSES_PER_CHUNK) {
+      console.warn(`⚠️ Chunk ${i} trop grand (${chunk.length} adresses). Découpage en sous-chunks...`);
+      const subChunks: Adresse[][] = [];
+      for (let j = 0; j < chunk.length; j += MAX_ADDRESSES_PER_CHUNK) {
+        subChunks.push(chunk.slice(j, j + MAX_ADDRESSES_PER_CHUNK));
+      }
+      // Optimisation de chaque sous-chunk
+      for (const sub of subChunks) {
+        await this.optimizeRoutes(VEHICULES, 10000, sub);
+        // Petite pause pour éviter de saturer le navigateur et l'API
+        await new Promise(r => setTimeout(r, 50));
+      }
+    } else {
+      // Chunk ok, on l'optimise directement
+      await this.optimizeRoutes(VEHICULES, 10000, chunk);
+      await new Promise(r => setTimeout(r, 50));
+    }
+
+    console.log(`✅ Chunk ${i + 1}/${chunks.length} optimisé.`);
+  }
+
+  console.log("🎯 Toutes les optimisations terminées !");
+}
+
+
+   
+
+   
+
+
+
+
+ 
 
 }

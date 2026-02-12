@@ -51,7 +51,7 @@
         </svg>
         <h2>Optimisation des routes</h2>
       </div>
-      <form (submit)="optimizeRoutes(nbVehicules.valueAsNumber, maxTime.valueAsNumber)" class="control-form">
+      <form (submit)="optimizeRoutes(nbVehicules.valueAsNumber, maxTime.valueAsNumber,this._adresses())" class="control-form">
         <div class="form-row">
           <div class="form-group">
             <label for="numberOfVehicles">Nombre de véhicules</label>
