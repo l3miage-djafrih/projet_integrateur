@@ -28,7 +28,7 @@ Les adresses générées sont uniquement :
 - affichées sur la carte.  
 Elles ne sont pas automatiquement sauvegardées sous forme de fichiers exploitables.  
 Pour résoudre ce problème, nous avons créé une méthode :  
-
+pour voir le fonctionnement de la génération de données ,il faut se rendre dans la branch feature/matrice
 ```Typescript
 downloadAdressesJson(nb: number)
 ```
@@ -75,6 +75,9 @@ Des exemples de matrices sont disponible dans le dossier `src/app/data` (les fic
 
 ### Les stratégies suivies pour casser la complexité :  
 Afin de casser les limites d'ORS, on a suit la stratégie de découpage pour l'API Matrix et on a réussi à construire des matrices temps distances pour plus de 50 points de livraison, et pour l'API d'optimisation, on a défini 3 stratégies, chacune est implémentée avec un algorithme spécéfique, ils sont expliqués en détails ci-dessous :  
+
+#### Remarque :
+ ces stratégies fonctionnent, mais elles ne sont pas encore complètement optimisées. Nous travaillons activement à les améliorer.
 
 ### Les algorithmes à utiliser pour résoudre le problème :  
 #### Algo 1 : Algorithme de Clustering par Angle (Sweeper Algorithm)  
@@ -151,3 +154,8 @@ Adresses JSON → Matrice pré-calculée → K-Medoids clustering
 On a implémenté ces 3 algorithmes mais ils marchent pas parfaitement, il y a quelques nuances qu'on arrive pas à résoudre actuellement mais on va les améliorer prochainement, voici une petite explication :  
 - Soit il construit des tournées selon le nombre de clusters disponibles, et donc il prend pas en consédération le nombre de véhicules, en ce cas là pour pouvoir effectuer toutes les tournées, chaque véhicule doit prendre au moins une tournée (le but c'est de ne pas laisser une tournée sans véhicule).
 - Soit il construit des tournées selon le nombre de véhicules, en ce cas là toutes les tournées sont affectées, mais chacune possède au maximum 50 adresses, si par exemple on a 200 adresses et 3 véhécules, il va prendre 150 seulement et laisser 50. 
+
+
+
+#### Remarque :
+ ces stratégies fonctionnent, mais elles ne sont pas encore complètement optimisées. Nous travaillons activement à les améliorer.
