@@ -12,46 +12,56 @@
   </div>
 
   <div class="controls-section">
+    <!-- Sélection du dataset -->
     <div class="control-card">
       <div class="card-header">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-          <circle cx="12" cy="10" r="3"></circle>
+          <path d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"></path>
+          <path d="M4 12c0 2.21 3.582 4 8 4s8-1.79 8-4"></path>
         </svg>
-        <h2>Génération de points</h2>
+        <h2>Jeux de données</h2>
       </div>
-      <form (submit)="generateAdresses(nbPt.valueAsNumber)" class="control-form">
-        <div class="form-group">
-          <label for="numberOfPoints">Nombre de points</label>
-          <input 
-            #nbPt 
-            id="numberOfPoints"
-            name="numberOfPoints" 
-            type="number" 
-            min="1" 
-            placeholder="Ex: 50" 
-            value="50" 
-            class="form-input" />
-        </div>
-        <button type="submit" class="btn btn-primary">
-          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"></circle>
-            <path d="M12 8v8m-4-4h8"></path>
-          </svg>
-          Générer
+      <div class="dataset-grid">
+        <button 
+          (click)="changeDataSet(1)" 
+          class="btn-dataset btn-dataset-1">
+          <div class="dataset-icon">50</div>
+          <div class="dataset-label">points</div>
         </button>
-      </form>
+
+        <button 
+          (click)="changeDataSet(2)" 
+          class="btn-dataset btn-dataset-2">
+          <div class="dataset-icon">100</div>
+          <div class="dataset-label">points</div>
+        </button>
+
+        <button 
+          (click)="changeDataSet(3)" 
+          class="btn-dataset btn-dataset-3">
+          <div class="dataset-icon">200</div>
+          <div class="dataset-label">points</div>
+        </button>
+
+        <button 
+          (click)="changeDataSet(4)" 
+          class="btn-dataset btn-dataset-4">
+          <div class="dataset-icon">400</div>
+          <div class="dataset-label">points</div>
+        </button>
+      </div>
     </div>
 
+    <!-- Paramètres d'optimisation -->
     <div class="control-card">
       <div class="card-header">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
-          <path d="M6 1v4M10 1v4M14 1v4"></path>
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"></path>
         </svg>
-        <h2>Optimisation des routes</h2>
+        <h2>Paramètres</h2>
       </div>
-      <form (submit)="optimizeRoutesEquitable(nbVehicules.valueAsNumber, maxTime.valueAsNumber)" class="control-form">
+      <div class="control-form">
         <div class="form-row">
           <div class="form-group">
             <label for="numberOfVehicles">Nombre de véhicules</label>
@@ -79,38 +89,62 @@
               class="form-input" />
           </div>
         </div>
-        <button type="submit" class="btn btn-secondary">
-          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
-          </svg>
-          Optimiser équitablement
-        </button>
-      </form>
+      </div>
     </div>
 
-    <div class="control-card">
+    <!-- Méthodes d'optimisation -->
+    <div class="control-card optimization-methods">
       <div class="card-header">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-          <path d="M12 22V12"></path>
-          <path d="M3.3 7L12 12l8.7-5"></path>
-          <circle cx="12" cy="12" r="2"></circle>
-          <path d="M7.5 9.5L12 12l4.5-2.5"></path>
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
         </svg>
-        <h2>Optimisation balayeuse</h2>
+        <h2>Méthodes d'optimisation</h2>
       </div>
-      <form (submit)="optimizeRoutesCluster(nbVehicules.valueAsNumber, maxTime.valueAsNumber)" class="control-form">
-        <button type="submit" class="btn btn-tertiary">
+      <div class="optimization-grid">
+        <!-- Optimisation équitable -->
+        <button 
+          (click)="optimizeRoutesEquitable(nbVehicules.valueAsNumber, maxTime.valueAsNumber)" 
+          class="btn-optimize btn-equitable">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+            <path d="M6 1v4M10 1v4M14 1v4"></path>
+          </svg>
+          <div class="btn-content">
+            <span class="btn-title">Optimisation équitable</span>
+            <span class="btn-subtitle">Distribution équilibrée</span>
+          </div>
+        </button>
+
+        <!-- Optimisation balayeuse -->
+        <button 
+          (click)="optimizationSweeper(nbVehicules.valueAsNumber, maxTime.valueAsNumber)" 
+          class="btn-optimize btn-sweep">
           <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 10.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10.5"></path>
             <polyline points="16 2 22 8 16 8"></polyline>
             <line x1="10" y1="14" x2="21" y2="14"></line>
             <line x1="10" y1="18" x2="18" y2="18"></line>
-            <polyline points="15 2 15 8 21 8"></polyline>
           </svg>
-          Optimiser nb tournées
+          <div class="btn-content">
+            <span class="btn-title">Optimisation balayeuse</span>
+            <span class="btn-subtitle">Minimiser nb tournées</span>
+          </div>
         </button>
-      </form>
+
+        <!-- Optimisation temps -->
+        <button 
+          (click)="optimizeRoutesCluster(nbVehicules.valueAsNumber, maxTime.valueAsNumber)" 
+          class="btn-optimize btn-time">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <div class="btn-content">
+            <span class="btn-title">Optimisation temps</span>
+            <span class="btn-subtitle">Minimiser la durée</span>
+          </div>
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -167,6 +201,10 @@
   .control-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08), 0 8px 20px rgba(0, 0, 0, 0.12);
+  }
+
+  .optimization-methods {
+    grid-column: 1 / -1;
   }
 
   .card-header {
@@ -234,65 +272,211 @@
     border-color: #cbd5e0;
   }
 
-  .btn {
-    padding: 0.875rem 1.5rem;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 600;
+  /* Grille des datasets */
+  .dataset-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .btn-dataset {
+    padding: 1rem;
+    border: 2px solid transparent;
+    border-radius: 10px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
+    background: white;
+    position: relative;
+    overflow: hidden;
   }
 
-  .btn-icon {
-    width: 20px;
-    height: 20px;
+  .btn-dataset::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    opacity: 0.1;
+    transition: opacity 0.3s;
   }
 
-  .btn-primary {
+  .btn-dataset:hover::before {
+    opacity: 0.15;
+  }
+
+  .btn-dataset:hover {
+    transform: translateY(-2px) scale(1.02);
+    border-color: currentColor;
+  }
+
+  .btn-dataset:active {
+    transform: translateY(0) scale(0.98);
+  }
+
+  .dataset-icon {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .dataset-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    opacity: 0.8;
+  }
+
+  /* Couleurs spécifiques par dataset */
+  .btn-dataset-1 {
+    color: #667eea;
+    border-color: rgba(102, 126, 234, 0.2);
+  }
+
+  .btn-dataset-1::before {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
   }
 
-  .btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  .btn-dataset-1:hover {
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
   }
 
-  .btn-primary:active {
-    transform: translateY(0);
+  .btn-dataset-2 {
+    color: #f5576c;
+    border-color: rgba(245, 87, 108, 0.2);
   }
 
-  .btn-secondary {
+  .btn-dataset-2::before {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  }
+
+  .btn-dataset-2:hover {
+    box-shadow: 0 4px 12px rgba(245, 87, 108, 0.3);
+  }
+
+  .btn-dataset-3 {
+    color: #38f9d7;
+    border-color: rgba(56, 249, 215, 0.2);
+  }
+
+  .btn-dataset-3::before {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  }
+
+  .btn-dataset-3:hover {
+    box-shadow: 0 4px 12px rgba(67, 233, 123, 0.3);
+  }
+
+  .btn-dataset-4 {
+    color: #fa709a;
+    border-color: rgba(250, 112, 154, 0.2);
+  }
+
+  .btn-dataset-4::before {
+    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  }
+
+  .btn-dataset-4:hover {
+    box-shadow: 0 4px 12px rgba(250, 112, 154, 0.3);
+  }
+
+  /* Grille des méthodes d'optimisation */
+  .optimization-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+  }
+
+  .btn-optimize {
+    padding: 1.25rem 1.5rem;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    text-align: left;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-optimize::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .btn-optimize:hover::before {
+    opacity: 1;
+  }
+
+  .btn-optimize .btn-icon {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+  }
+
+  .btn-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .btn-title {
+    font-size: 1rem;
+    font-weight: 600;
+    display: block;
+  }
+
+  .btn-subtitle {
+    font-size: 0.813rem;
+    opacity: 0.9;
+    display: block;
+  }
+
+  /* Styles spécifiques par méthode */
+  .btn-equitable {
     background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
     color: white;
   }
 
-  .btn-secondary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(245, 87, 108, 0.4);
+  .btn-equitable:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(245, 87, 108, 0.4);
   }
 
-  .btn-secondary:active {
-    transform: translateY(0);
-  }
-
-  .btn-tertiary {
+  .btn-sweep {
     background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
     color: white;
-    width: 100%;
   }
 
-  .btn-tertiary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(67, 233, 123, 0.4);
+  .btn-sweep:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(67, 233, 123, 0.4);
   }
 
-  .btn-tertiary:active {
+  .btn-time {
+    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    color: white;
+  }
+
+  .btn-time:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(250, 112, 154, 0.4);
+  }
+
+  .btn-optimize:active {
     transform: translateY(0);
   }
 
@@ -315,6 +499,26 @@
 
     .form-row {
       grid-template-columns: 1fr;
+    }
+
+    .dataset-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .optimization-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .optimization-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  @media (min-width: 640px) {
+    .dataset-grid {
+      grid-template-columns: repeat(4, 1fr);
     }
   }
 </style>

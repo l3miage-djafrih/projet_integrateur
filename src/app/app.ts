@@ -14,6 +14,13 @@ import { matrix400  } from './data/dataSet400Adresses/matrix_377_complete';
 import { adresse400 } from './data/dataSet400Adresses/adresses_377._complete';
 import { Sweep } from './services/optimisation-sweep.service';
 import { OptimizeAdvancedService } from './services/optimisation-clusters';
+import { matrix100 } from './data/dataSet100Adresses/matrix_96_complete';
+import { adresse100 } from './data/dataSet100Adresses/adresse_96_complete';
+import { Matrice } from './data/Matrice';
+import { adresse50 } from './data/dataSet50Adresses/adresse_47_complete';
+import { matrix50 } from './data/dataSet50Adresses/matrix_47_complete';
+import { adresse200 } from './data/dataSet200Adresses/adresses_187_complete';
+import { matrix200 } from './data/dataSet200Adresses/matrix_187_complete';
 
 const lastAdressesKey = "adresses";
 const lastOptimizationResponseKey = "lastOptimizationResponse";
@@ -37,8 +44,26 @@ export class App {
   private readonly _srvOptimizeAdvanced = inject(OptimizeAdvancedService);
 
   // 🔥 DONNÉES PRÉ-CALCULÉES - EXACTEMENT COMME LA PHOTO
-  matrice100 = matrix400;
-  adresse50 = adresse400;
+ 
+  public changeDataSet(dataSet:number){
+    this._routes.set([])
+    if(dataSet==1){
+        this._adresses.set(adresse50)
+        this._matrice.set(matrix50)
+    }
+    else if(dataSet==2){
+         this._adresses.set(adresse100)
+        this._matrice.set(matrix100)
+    }
+    else if(dataSet==3){
+       this._adresses.set(adresse200)
+        this._matrice.set(matrix200)
+    }
+    else{
+       this._adresses.set(adresse400)
+        this._matrice.set(matrix400)
+    }
+  }
 
   // Local state
   private readonly bounds = signal<LatLngBoundsLiteral>([[45.1, 5.6], [45.3, 5.9]]);
@@ -48,8 +73,8 @@ export class App {
   };
 
   // 🔥 PAR DÉFAUT, ON CHARGE adresse50 AU LIEU DE localStorage
-  private readonly _adresses = signal<readonly Adresse[]>(adresse400);
-  
+  private readonly _adresses = signal<readonly Adresse[]>(adresse50);
+   private readonly _matrice = signal< Matrice>(matrix400);
   private readonly _optimizationResult: WritableSignal<undefined | OptimizationResult>;
   private readonly _routes = signal<ReadonlyArray<ReadonlyArray<LatLngTuple>>>(
     localStorage.getItem(lastRoutesKey) ? JSON.parse(localStorage.getItem(lastRoutesKey)!) : []
@@ -101,22 +126,7 @@ export class App {
   }
 
   // 🔥 EXACTEMENT COMME LA PHOTO - ngOnInit AVEC LA BOUCLE
-  ngOnInit() {
-    console.log('\n' + '='.repeat(80));
-    console.log('📊 CHARGEMENT PAR DÉFAUT - DATASET 50');
-    console.log('='.repeat(80));
-    
-    console.log(`📍 Parking: ${this.adresse50[this.adresse50.length - 1].name}`);
-    console.log(`📦 Points à livrer: ${this.adresse50.length - 1}`);
-    console.log(`✅ Total adresses: ${this._adresses().length}\n`);
-    
-    // 🔥 LA BOUCLE EXACTEMENT COMME LA PHOTO
-    for(let i = 0; i < this.matrice100.distances.length; i++) {
-      console.log(this.matrice100.distances[i]);
-    }
-    
-    console.log('\n✅ Matrice affichée: ' + this.matrice100.distances.length + ' lignes');
-  }
+ 
 
   // 🔥 PLUS BESOIN DE BOUTON - C'EST LE DÉFAUT !
 
@@ -218,6 +228,7 @@ protected async optimizeRoutesCluster(
     maxTimePerVehicule: number
   ): Promise<void> {
     this._routes.set([])
+    let matrix=this._matrice();
     const adresses = this._adresses();
 
     if (adresses.length === 0) {
@@ -264,8 +275,8 @@ protected async optimizeRoutesCluster(
         adresses: deliveries,
         parking,
         preCalculatedMatrix: {
-          distances: matrix400.distances,
-          durations: matrix400.durations
+          distances: matrix.distances,
+          durations: matrix.durations
         }
       });
 
