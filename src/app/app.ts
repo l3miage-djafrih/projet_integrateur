@@ -342,6 +342,7 @@ public async megaOptimization(vehicules:number): Promise<void> {
   const MAX_ROUTES_API = 3500;
   const VEHICULES = vehicules;
   const MAX_ADDRESSES_PER_CHUNK = Math.floor(MAX_ROUTES_API / VEHICULES);
+  let vehiculesRestant=vehicules;
 
   // clear previous routes
   this._routes.set([]);
@@ -356,52 +357,56 @@ public async megaOptimization(vehicules:number): Promise<void> {
   console.log(`🔹 ${chunks.length} chunks générés par Sweep.`);
 
   // STEP 2: optimize each chunk
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i];
+  
 
-    // if chunk too big → split
-    if (chunk.length > MAX_ADDRESSES_PER_CHUNK) {
-      console.warn(
-        `⚠️ Chunk ${i} trop grand (${chunk.length}). Découpage...`
-      );
+  
+  
 
-      const subChunks: Adresse[][] = [];
-      for (let j = 0; j < chunk.length; j += MAX_ADDRESSES_PER_CHUNK) {
-        subChunks.push(chunk.slice(j, j + MAX_ADDRESSES_PER_CHUNK));
-      }
+      
 
-      for (const subChunk of subChunks) {
-        const chunkWithParking = [...subChunk, parking];
+      for (const Chunk of chunks) {
+        if(vehiculesRestant==0){
+          console.log("stop tout y'as rien qui va ");
+          break;
+        }
+        console.log("le nombre de véhicules restant est "+vehiculesRestant);
+
+        const chunkWithParking = [...Chunk, parking];
         let vehiculesNecessaires=1;
         let result=await this.optimizeRoutes(vehiculesNecessaires, 10000, chunkWithParking);
-        while(result===undefined){
-          if(vehiculesNecessaires>3){
+        console.log(this._optimizationResult());
+        console.log(" j'ai fait le premier appel de l'entré dans le for and the number of parametres is  "+vehiculesNecessaires );
+        let unassignedLength=this._optimizationResult()?.unassigned==undefined ? 0:1;
+        console.log("la valeur de unassignedLength est "+unassignedLength);
+        while(this._optimizationResult()===undefined || unassignedLength>0){
+          if(vehiculesNecessaires==3){
             console.log("le chunks ne pourra pas se desservie avec 3 livreurs ,on va passer au prochain");
             break;
           }
-          else if(vehicules==0){
+          else if(vehiculesRestant==0){
             console.log("il faut ajouter des livreurs ");
+            break;
           }
           else{
           vehiculesNecessaires=vehiculesNecessaires+1;
-          result=await this.optimizeRoutes(vehiculesNecessaires+1,10000,chunk)
+
+          result=await this.optimizeRoutes(vehiculesNecessaires,10000,Chunk)
+          console.log("je suis dans l'appel de else et j'ai "+vehiculesNecessaires+" de livreurs");
           }
 
         }
+        vehiculesRestant=vehiculesRestant-vehiculesNecessaires;
         await new Promise(r => setTimeout(r, 3000));
       }
 
-    } else {
-      const chunkWithParking = [...chunk, parking];
-      await this.optimizeRoutes(VEHICULES, 10000, chunkWithParking);
-      await new Promise(r => setTimeout(r, 3000));
-    }
+      console.log("fin de l'optimization");
 
-    console.log(`✅ Chunk ${i + 1}/${chunks.length} optimisé.`);
-  }
+    } 
+   
+  
 
-  console.log('🎯 Toutes les optimisations terminées !');
-}
+  
+
 
    
 
