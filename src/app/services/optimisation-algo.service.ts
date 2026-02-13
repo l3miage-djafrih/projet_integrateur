@@ -2,13 +2,13 @@ import { Adresse } from '../data/adresse';
 import { OptimizationResult } from './OptimizationResult';
 
 /**
- * 🚚 RÉPARTITION ÉQUITABLE DES POINTS
+ * Répartition équitable des points entre les chauffeurs
  * 
- * Ce qu'on veut faire :
- * 1. Chaque chauffeur doit avoir le MÊME nombre de livraisons (±1) → pas de jaloux
- * 2. ORS ne peut pas traiter plus de 50 points par appel → sinon erreur 413
- * 3. ORS ne peut pas gérer plus de 3 véhicules par appel → limite API
- * 4. On regroupe les petits paquets pour économiser des appels API
+ * Objectifs :
+ * 1. Chaque chauffeur reçoit le même nombre de livraisons (±1)
+ * 2. ORS limite à 50 points par appel (erreur 413 sinon)
+ * 3. ORS limite à 3 véhicules par appel
+ * 4. On regroupe pour réduire le nombre d'appels API
  */
 export async function optimiseEquitable(
   adresses: readonly Adresse[],
@@ -33,36 +33,31 @@ export async function optimiseEquitable(
     alerte?: string;
   }
 }> {
-  // Le dernier point de la liste est TOUJOURS le parking
+  // Le parking est toujours le dernier point
   const parking = adresses[adresses.length - 1];
-  // Tous les autres points sont à livrer
   const jobs = adresses.slice(0, -1);
   const totalPoints = jobs.length;
   
   console.log('\n' + '='.repeat(80));
-  console.log('🚚 RÉPARTITION ÉQUITABLE - VALIDATION');
+  console.log('REPARTITION EQUITABLE - VALIDATION');
   console.log('='.repeat(80));
-  console.log(`\n📦 Points à livrer: ${totalPoints}`);
-  console.log(`🚛 Véhicules demandés: ${nbVehiculesDemandes}`);
-  console.log(`⏱️  Temps max/véhicule: ${maxTimePerVehicule}s`);
+  console.log(`\nPoints a livrer: ${totalPoints}`);
+  console.log(`Vehicules demandes: ${nbVehiculesDemandes}`);
+  console.log(`Temps max par vehicule: ${maxTimePerVehicule}s`);
 
-  // --- CONSTANTES DE BASE (imposées par ORS) ---
-  const POINTS_MAX_PAR_PAQUET = 50;  // LIMITE ABSOLUE : 50 points par appel
-  const VEHICULES_MAX_PAR_PAQUET = 3; // LIMITE ABSOLUE : 3 véhicules par appel
+  // Constantes imposées par ORS
+  const POINTS_MAX_PAR_PAQUET = 50;
+  const VEHICULES_MAX_PAR_PAQUET = 3;
   
-  // ------------------------------------------------------------
-  // ÉTAPE 1 : VÉRIFICATION DE BASE
-  // ------------------------------------------------------------
-  // Est-ce qu'on a assez de véhicules pour couvrir tous les points ?
-  // Si on a 376 points, il faut au moins 8 véhicules (8×50 = 400)
+  // Vérification du nombre minimum de véhicules nécessaires
+  // Exemple: 376 points nécessitent au moins 8 véhicules (8×50 = 400)
   const vehiculesMinimum = Math.ceil(totalPoints / POINTS_MAX_PAR_PAQUET);
   
   if (nbVehiculesDemandes < vehiculesMinimum) {
-    console.log(`\n❌ VÉHICULES INSUFFISANTS !`);
-    console.log(`   • Besoin minimum: ${vehiculesMinimum} véhicules (50pts max par appel)`);
-    console.log(`   • Disponible: ${nbVehiculesDemandes} véhicules`);
+    console.log(`\nERREUR: Vehicules insuffisants`);
+    console.log(`   • Besoin minimum: ${vehiculesMinimum} vehicules`);
+    console.log(`   • Disponible: ${nbVehiculesDemandes} vehicules`);
     
-    // On bloque tout de suite - pas la peine d'aller plus loin
     return {
       results: [],
       stats: {
@@ -73,30 +68,26 @@ export async function optimiseEquitable(
         totalPaquets: 0,
         totalDuree: 0,
         totalCout: 0,
-        alerte: `❌ ${nbVehiculesDemandes}v < ${vehiculesMinimum}v minimum requis`
+        alerte: `${nbVehiculesDemandes}v < ${vehiculesMinimum}v minimum requis`
       }
     };
   }
 
-  // ------------------------------------------------------------
-  // ÉTAPE 2 : DISTRIBUTION ÉQUITABLE DES POINTS
-  // ------------------------------------------------------------
-  // On calcule combien de points chaque véhicule va prendre
-  // Exemple: 376 points / 10 véhicules = 37 points chacun + 6 en rab'
+  // Distribution équitable des points
+  // Exemple: 376 points / 10 véhicules = 37 points chacun + 6 en rab
   const pointsParVehicule = Math.floor(totalPoints / nbVehiculesDemandes);
   let restePoints = totalPoints - (pointsParVehicule * nbVehiculesDemandes);
   
-  console.log(`\n📊 ÉQUITÉ PAR VÉHICULE:`);
-  console.log(`   • ${pointsParVehicule} points/véhicule (base)`);
-  console.log(`   • ${restePoints} véhicule(s) avec +1 point`);
+  console.log(`\nRepartition par vehicule:`);
+  console.log(`   • ${pointsParVehicule} points par vehicule (base)`);
+  console.log(`   • ${restePoints} vehicule(s) avec +1 point`);
   
-  // Vérification : est-ce qu'un véhicule se tape plus de 50 points ?
-  // Si oui, c'est mort d'avance
+  // Vérification: aucun véhicule ne doit dépasser 50 points
   if (pointsParVehicule + 1 > POINTS_MAX_PAR_PAQUET) {
-    console.log(`\n❌ POINTS PAR VÉHICULE TROP ÉLEVÉ !`);
-    console.log(`   • Maximum ORS: ${POINTS_MAX_PAR_PAQUET}pts par véhicule`);
-    console.log(`   • Demandé: ~${pointsParVehicule}pts par véhicule`);
-    console.log(`\n💡 SOLUTION: Augmentez le nombre de véhicules`);
+    console.log(`\nERREUR: Trop de points par vehicule`);
+    console.log(`   • Maximum ORS: ${POINTS_MAX_PAR_PAQUET}pts par vehicule`);
+    console.log(`   • Demande: ~${pointsParVehicule}pts par vehicule`);
+    console.log(`\nSolution: Augmenter le nombre de vehicules`);
     
     return {
       results: [],
@@ -108,20 +99,16 @@ export async function optimiseEquitable(
         totalPaquets: 0,
         totalDuree: 0,
         totalCout: 0,
-        alerte: `❌ ${pointsParVehicule}pts/véh > ${POINTS_MAX_PAR_PAQUET}pts max`
+        alerte: `${pointsParVehicule}pts/veh > ${POINTS_MAX_PAR_PAQUET}pts max`
       }
     };
   }
 
-  // ------------------------------------------------------------
-  // ÉTAPE 3 : AFFECTATION DES POINTS À CHAQUE VÉHICULE
-  // ------------------------------------------------------------
-  // On trie les points par longitude (ouest → est)
-  // C'est plus logique pour les tournées
+  // Tri des points par longitude (ouest vers est) pour des tournées cohérentes
   const sorted = [...jobs].sort((a, b) => a.lng - b.lng);
-  let indexPoint = 0;  // Où on en est dans la liste des points
+  let indexPoint = 0;
   
-  // On fabrique un tableau qui dit : "Véhicule 1 : X points, Véhicule 2 : Y points..."
+  // Construction du tableau indiquant le nombre de points par véhicule
   const vehiculesPoints: number[] = [];
   for (let i = 0; i < nbVehiculesDemandes; i++) {
     let pts = pointsParVehicule;
@@ -132,33 +119,28 @@ export async function optimiseEquitable(
     vehiculesPoints.push(pts);
   }
 
-  console.log(`\n📦 DISTRIBUTION PAR VÉHICULE:`);
+  console.log(`\nDistribution finale:`);
   console.log(`   • Min: ${Math.min(...vehiculesPoints)}pts, Max: ${Math.max(...vehiculesPoints)}pts`);
 
-  // ------------------------------------------------------------
-  // ÉTAPE 4 : REGROUPEMENT OPTIMAL
-  // ------------------------------------------------------------
-  // Objectif : mettre plusieurs véhicules dans le même appel ORS
-  // pour économiser des appels API
-  console.log(`\n🔄 REGROUPEMENT OPTIMAL (max ${POINTS_MAX_PAR_PAQUET}pts/paquet)...`);
+  // Regroupement des véhicules en paquets pour économiser les appels API
+  console.log(`\nRegroupement (max ${POINTS_MAX_PAR_PAQUET}pts par paquet)...`);
   
   const paquets: Adresse[][] = [];
   const allocations: number[] = [];
-  let bufferPoints: Adresse[] = [];    // Les points en attente
-  let bufferVehicules = 0;            // Les véhicules en attente
-  let bufferTotalPts = 0;            // Le total des points en attente
+  let bufferPoints: Adresse[] = [];
+  let bufferVehicules = 0;
+  let bufferTotalPts = 0;
   
-  // On passe en revue chaque véhicule et on essaie de le caser dans le buffer
+  // Parcours des véhicules pour les regrouper
   for (let i = 0; i < nbVehiculesDemandes; i++) {
     const ptsVehicule = vehiculesPoints[i];
     const adressesVehicule = sorted.slice(indexPoint, indexPoint + ptsVehicule);
     indexPoint += ptsVehicule;
     
-    // CAS PATHOLOGIQUE : un véhicule avec plus de 50 points à lui tout seul
-    // Normalement on l'a déjà filtré avant, mais on vérifie quand même
+    // Vérification de sécurité (normalement déjà filtré)
     if (ptsVehicule > POINTS_MAX_PAR_PAQUET) {
-      console.log(`\n❌ PAQUET IMPOSSIBLE: ${ptsVehicule}pts > ${POINTS_MAX_PAR_PAQUET}pts`);
-      console.log(`   💡 Solution: Augmentez le nombre de véhicules`);
+      console.log(`\nERREUR: Paquet impossible: ${ptsVehicule}pts > ${POINTS_MAX_PAR_PAQUET}pts`);
+      console.log(`   Solution: Augmenter le nombre de vehicules`);
       
       return {
         results: [],
@@ -170,36 +152,31 @@ export async function optimiseEquitable(
           totalPaquets: 0,
           totalDuree: 0,
           totalCout: 0,
-          alerte: `❌ ${ptsVehicule}pts > ${POINTS_MAX_PAR_PAQUET}pts max`
+          alerte: `${ptsVehicule}pts > ${POINTS_MAX_PAR_PAQUET}pts max`
         }
       };
     }
     
-    // On ajoute ce véhicule au buffer
     bufferPoints.push(...adressesVehicule);
     bufferVehicules++;
     bufferTotalPts += ptsVehicule;
     
     // Si le buffer dépasse 50 points, on garde le véhicule précédent
-    // et on met le nouveau dans un nouveau buffer
     if (bufferTotalPts > POINTS_MAX_PAR_PAQUET) {
       const lastPoints = ptsVehicule;
-      // On retire le dernier véhicule ajouté
       bufferPoints = bufferPoints.slice(0, -lastPoints);
       bufferVehicules--;
       bufferTotalPts -= lastPoints;
       
-      // On valide le paquet avec les véhicules précédents
       paquets.push([...bufferPoints]);
       allocations.push(bufferVehicules);
       
-      // On commence un nouveau buffer avec le véhicule courant
       bufferPoints = [...adressesVehicule];
       bufferVehicules = 1;
       bufferTotalPts = ptsVehicule;
     }
     
-    // Si on atteint 3 véhicules dans le buffer, on valide le paquet
+    // Si on atteint 3 véhicules, on valide le paquet
     if (bufferVehicules === VEHICULES_MAX_PAR_PAQUET) {
       paquets.push([...bufferPoints]);
       allocations.push(VEHICULES_MAX_PAR_PAQUET);
@@ -209,17 +186,16 @@ export async function optimiseEquitable(
     }
   }
   
-  // Dernier paquet : ce qui reste dans le buffer
+  // Dernier paquet avec ce qui reste
   if (bufferPoints.length > 0) {
     paquets.push([...bufferPoints]);
     allocations.push(bufferVehicules);
   }
 
-  console.log(`\n🚛 ALLOCATION FINALE:`);
-  console.log(`   • ${paquets.length} paquet(s) pour ${nbVehiculesDemandes} véhicules`);
-  console.log(`   • Économie: ${nbVehiculesDemandes - paquets.length} appels ORS (${Math.round((1 - paquets.length/nbVehiculesDemandes)*100)}%)`);
+  console.log(`\nAllocation finale:`);
+  console.log(`   • ${paquets.length} paquet(s) pour ${nbVehiculesDemandes} vehicules`);
+  console.log(`   • Economie: ${nbVehiculesDemandes - paquets.length} appels ORS`);
   
-  // On affiche le détail des paquets créés
   let totalPointsAlloues = 0;
   let totalVehiculesAlloues = 0;
   
@@ -227,24 +203,21 @@ export async function optimiseEquitable(
     totalVehiculesAlloues += alloc;
     totalPointsAlloues += paquets[i].length;
     const ratio = Math.round(paquets[i].length / alloc);
-    console.log(`   • Paquet ${i+1}: ${paquets[i].length}pts, ${alloc}v (${ratio}pts/véh)`);
+    console.log(`   • Paquet ${i+1}: ${paquets[i].length}pts, ${alloc}v (${ratio}pts/veh)`);
   });
   
-  console.log(`   • TOTAL: ${totalPointsAlloues}/${totalPoints} points, ${totalVehiculesAlloues}/${nbVehiculesDemandes} véhicules`);
+  console.log(`   • Total: ${totalPointsAlloues}/${totalPoints} points, ${totalVehiculesAlloues}/${nbVehiculesDemandes} vehicules`);
 
-  // ------------------------------------------------------------
-  // ÉTAPE 5 : APPEL À ORS 
-  // ------------------------------------------------------------
-  console.log(`\n⚡ Optimisation (${paquets.length} appels ORS)...`);
+  // Appels à ORS pour chaque paquet
+  console.log(`\nOptimisation (${paquets.length} appels ORS)...`);
   
   const results: OptimizationResult[] = [];
   let totalDuree = 0;
   let totalVehiculesUtilises = 0;
   let totalPointsLivres = 0;
   
-  // Pour chaque paquet, on appelle ORS
   for (let i = 0; i < paquets.length; i++) {
-    console.log(`\n🔄 Paquet ${i+1}/${paquets.length} (${paquets[i].length}pts, ${allocations[i]}v)...`);
+    console.log(`\nPaquet ${i+1}/${paquets.length} (${paquets[i].length}pts, ${allocations[i]}v)...`);
     
     try {
       const result = await optimizeCallback({
@@ -258,43 +231,38 @@ export async function optimiseEquitable(
       totalDuree += result.summary.duration;
       totalVehiculesUtilises += result.routes.length;
       
-      // ORS nous dit combien de points il a RÉELLEMENT livrés
+      // Calcul des points réellement livrés (steps - départ - retour)
       const pointsDansPaquet = result.routes.reduce((acc, route) => 
         acc + Math.max(0, route.steps.length - 2), 0
       );
       totalPointsLivres += pointsDansPaquet;
       
-      // On check si ORS a tout livré ou pas
-      const statut = pointsDansPaquet === paquets[i].length ? '✅' : '⚠️';
-      console.log(`   ${statut} ${result.routes.length}/${allocations[i]} véhicules`);
-      console.log(`   📦 ${pointsDansPaquet}/${paquets[i].length} points`);
+      const statut = pointsDansPaquet === paquets[i].length ? 'OK' : 'Attention';
+      console.log(`   ${statut} ${result.routes.length}/${allocations[i]} vehicules`);
+      console.log(`   ${pointsDansPaquet}/${paquets[i].length} points`);
       
     } catch (error) {
-      // Grosse erreur : ORS n'a pas aimé notre paquet
-      console.error(`   ❌ Erreur ORS:`, error);
-      console.log(`   💡 Ce paquet dépasse 50pts ou 3v`);
+      console.error(`   Erreur ORS:`, error);
+      console.log(`   Ce paquet depasse probablement 50pts ou 3v`);
       
       const vehiculesNecessaires = Math.ceil(paquets[i].length / POINTS_MAX_PAR_PAQUET);
-      console.log(`   💡 Solution: Augmentezle nombres de véhicules`);
+      console.log(`   Solution: Augmenter le nombre de vehicules`);
     }
   }
 
-  // ------------------------------------------------------------
-  // ÉTAPE 6 : RAPPORT FINAL - On dit à l'utilisateur ce qui s'est passé
-  // ------------------------------------------------------------
   const taux = totalPoints > 0 ? (totalPointsLivres / totalPoints) * 100 : 0;
   
   console.log('\n' + '='.repeat(80));
-  console.log('🏁 RAPPORT FINAL');
+  console.log('RAPPORT FINAL');
   console.log('='.repeat(80));
-  console.log(`\n📊 STATISTIQUES:`);
-  console.log(`   • 📦 Points: ${totalPoints}`);
-  console.log(`   • 📦 Points livrés: ${totalPointsLivres}`);
-  console.log(`   • 📊 Taux: ${taux.toFixed(1)}%`);
-  console.log(`   • 📦 Paquets: ${paquets.length}`);
-  console.log(`   • 🚛 Demandés: ${nbVehiculesDemandes}`);
-  console.log(`   • 🚛 Utilisés: ${totalVehiculesUtilises}`);
-  console.log(`   • 📞 Appels ORS: ${paquets.length} (${nbVehiculesDemandes - paquets.length} économisés)`);
+  console.log(`\nStatistiques:`);
+  console.log(`   • Points: ${totalPoints}`);
+  console.log(`   • Points livres: ${totalPointsLivres}`);
+  console.log(`   • Taux: ${taux.toFixed(1)}%`);
+  console.log(`   • Paquets: ${paquets.length}`);
+  console.log(`   • Vehicules demandes: ${nbVehiculesDemandes}`);
+  console.log(`   • Vehicules utilises: ${totalVehiculesUtilises}`);
+  console.log(`   • Appels ORS: ${paquets.length} (${nbVehiculesDemandes - paquets.length} economies)`);
   
   let alerte = '';
   
@@ -302,14 +270,14 @@ export async function optimiseEquitable(
     const pointsNonLivres = totalPoints - totalPointsLivres;
     const vehiculesRequis = Math.ceil(totalPoints / POINTS_MAX_PAR_PAQUET);
     
-    alerte = `⚠️ ${pointsNonLivres} points non livrés avec ${nbVehiculesDemandes}v`;
-    console.log(`\n🚨 ALERTE: ${alerte}`);
-    console.log(`\n💡 SOLUTIONS:`);
-    console.log(`   1. Augmentez le nombre de vehicule`);
-    console.log(`   2. Augmentez le temps par véhicule (actuel: ${maxTimePerVehicule}s)`);
+    alerte = `${pointsNonLivres} points non livres avec ${nbVehiculesDemandes}v`;
+    console.log(`\nAttention: ${alerte}`);
+    console.log(`\nSolutions:`);
+    console.log(`   1. Augmenter le nombre de vehicules`);
+    console.log(`   2. Augmenter le temps par vehicule (actuel: ${maxTimePerVehicule}s)`);
   } else {
-    console.log(`\n🎉 SUCCÈS: 100% DES POINTS LIVRÉS !`);
-    console.log(`   • Équité: ~${Math.round(totalPointsLivres / totalVehiculesUtilises)} pts/véhicule`);
+    console.log(`\nSucces: 100% des points livres`);
+    console.log(`   • Equite: ~${Math.round(totalPointsLivres / totalVehiculesUtilises)} pts/vehicule`);
   }
   
   return {

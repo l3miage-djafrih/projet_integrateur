@@ -8,7 +8,7 @@ import { firstValueFrom } from 'rxjs';
 import { orsKey } from './orsKey';
 import { OptimizationResult, parseOptimizationResultP, RouteStepBase } from './OptimizationResult';
 import { GeoJSONFeatureCollectionSchema, GeoJSONLineStringSchema } from 'zod-geojson';
-import { optimiseEquitable } from './optimisation-algo.service'; // 🔥 IMPORT DU NOUVEAU FICHIER
+import { optimiseEquitable } from './optimisation-algo.service';
 
 const cartoURL = 'https://api-adresse.data.gouv.fr';
 
@@ -19,14 +19,14 @@ export class Carto {
   private readonly _httpClient = inject(HttpClient);
 
   /**
-   * ⏱️ Fonction utilitaire pour attendre
+   * Attente pour respecter les limites de taux
    */
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**
-   * Gouv.api Reverse geocoding: from coordinates to addresses.
+   * Reverse geocoding: des coordonnees vers des adresses
    */
   public getAdressesFromCoordinates(L: readonly LatLngLiteral[]): Promise<readonly Adresse[]> {
     const url = new URL(cartoURL + '/reverse/csv');
@@ -47,7 +47,7 @@ export class Carto {
   }
 
   /**
-   * OpenRouteService Optimization API call avec SLEEP 3s.
+   * Appel a l'API Optimization d'OpenRouteService avec pause
    */
   public async optimize(params: Readonly<{
     nbVehicules: number,
@@ -56,8 +56,7 @@ export class Carto {
     parking: Adresse
   }>): Promise<OptimizationResult> {
     
-    console.log(`   ⏳ Rate limiting: Attente 3s avant appel ORS...`);
-    await this.sleep(5000);
+    await this.sleep(3000);
     
     const { nbVehicules, maxTimePerVehicule, adresses, parking } = params;
     const parkingLngLat: [number, number] = [parking.lng, parking.lat];
@@ -100,11 +99,10 @@ export class Carto {
   }
 
   /**
-   * OpenRouteService direction API call avec SLEEP 3s.
+   * Appel a l'API Directions d'OpenRouteService avec pause
    */
   public async getDirections(lngLatCoordinates: readonly RouteStepBase['location'][]): Promise<ReadonlyArray<LatLngTuple>> {
     
-    console.log(`   ⏳ Rate limiting: Attente 3s avant appel Directions...`);
     await this.sleep(3000);
     
     const req$ = this._httpClient.post(
@@ -131,9 +129,9 @@ export class Carto {
   }
 
   /**
-   * 🚀 POINT D'ENTRÉE - Délégation à l'algorithme externe
+   * Point d'entree - Delegation a l'algorithme de repartition equitable
    */
-  public async optimiseEquitable( // 🔥 RENOMMÉ
+  public async optimiseEquitable(
     adresses: readonly Adresse[],
     nbVehicules: number,
     maxTimePerVehicule: number
@@ -150,7 +148,6 @@ export class Carto {
       alerte?: string;
     }
   }> {
-    // Délégation pure à l'algorithme externe
     return optimiseEquitable(
       adresses,
       nbVehicules,
@@ -160,14 +157,14 @@ export class Carto {
   }
 
   /**
-   * 🚀 POINT D'ENTRÉE UNIQUE - Optimise ET exporte automatiquement
+   * Point d'entree unique - Optimise et exporte automatiquement
    */
   public async optimizeAndExport(
     adresses: readonly Adresse[],
     nbVehicules: number,
     maxTimePerVehicule: number
   ): Promise<OptimizationResult[]> {
-    const result = await this.optimiseEquitable(adresses, nbVehicules, maxTimePerVehicule); // 🔥 APPEL RENOMMÉ
+    const result = await this.optimiseEquitable(adresses, nbVehicules, maxTimePerVehicule);
     
     const jobs = adresses.slice(0, -1);
     const parking = adresses[adresses.length - 1];
@@ -177,7 +174,7 @@ export class Carto {
   }
 
   /**
-   * 📋 EXPORT JSON COMPLET
+   * Export JSON complet des tournees
    */
   private exportSimpleJSON(
     jobs: Adresse[],
@@ -186,7 +183,7 @@ export class Carto {
     stats: any
   ): void {
     
-    console.log(`\n📤 EXPORT JSON - ${jobs.length} points, ${results.length} paquet(s)`);
+    console.log(`\nExport JSON - ${jobs.length} points, ${results.length} paquet(s)`);
     
     const jobsMap = new Map<number, Adresse>();
     jobs.forEach((job, index) => jobsMap.set(index, job));
@@ -278,13 +275,13 @@ export class Carto {
       taux_couverture: `${((totalArretsCompteur / jobs.length) * 100).toFixed(1)}%`
     };
 
-    console.log(`   • 📦 Points totaux: ${jobs.length}`);
-    console.log(`   • ✅ Arrêts trouvés: ${totalArretsCompteur}/${jobs.length}`);
+    console.log(`Points totaux: ${jobs.length}`);
+    console.log(`Arrets trouves: ${totalArretsCompteur}/${jobs.length}`);
     
     if (totalArretsCompteur < jobs.length) {
-      console.warn(`   • ⚠️ Points non livrés: ${jobs.length - totalArretsCompteur}/${jobs.length}`);
+      console.warn(`Points non livres: ${jobs.length - totalArretsCompteur}/${jobs.length}`);
     } else {
-      console.log(`   • 🎉 Tous les points sont livrés !`);
+      console.log(`Tous les points sont livres`);
     }
 
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -295,11 +292,11 @@ export class Carto {
     a.click();
     window.URL.revokeObjectURL(url);
     
-    console.log(`📥 JSON exporté: ${exportData.tournees.length} tournées, ${totalArretsCompteur}/${jobs.length} arrêts`);
+    console.log(`JSON exporte: ${exportData.tournees.length} tournees, ${totalArretsCompteur}/${jobs.length} arrets`);
   }
 
   /**
-   * Calcule la matrice de distances routières entre adresses avec métadonnées complètes.
+   * Calcule la matrice de distances routieres entre adresses
    */
   public async getDistanceMatrix(adresses: readonly Adresse[]): Promise<{
     distances: number[][];
@@ -308,7 +305,6 @@ export class Carto {
     destinations: Array<{ location: [number, number]; snapped_distance: number }>;
     metadata?: any;
   }> {
-    // ... (code inchangé)
     const maxLocationsPerRequest = 50;
     const totalAddresses = adresses.length;
 
@@ -361,7 +357,7 @@ export class Carto {
     for (let i = 0; i < numChunks; i++) {
       for (let j = 0; j < numChunks; j++) {
         requestCount++;
-        console.log(`Processing request ${requestCount}/${totalRequests}...`);
+        console.log(`Traitement requete ${requestCount}/${totalRequests}...`);
 
         const startI = i * maxLocationsPerRequest;
         const endI = Math.min((i + 1) * maxLocationsPerRequest, totalAddresses);
@@ -427,13 +423,13 @@ export class Carto {
             await sleep(3000);
           }
         } catch (error) {
-          console.error(`Error on request ${requestCount}:`, error);
+          console.error(`Erreur requete ${requestCount}:`, error);
           throw error;
         }
       }
     }
 
-    console.log('Distance matrix completed!');
+    console.log('Matrice de distances complete');
     return { 
       distances: fullDistanceMatrix,
       durations: fullDurationMatrix,
@@ -445,7 +441,7 @@ export class Carto {
 }
 
 /**
- * Convert GeoJSON [lng, lat] to Leaflet [lat, lng]
+ * Convertit [lng, lat] (GeoJSON) vers [lat, lng] (Leaflet)
  */
 export function geoJsonLngLatToLatLng(lngLat: number[]): LatLngTuple {
   return [lngLat[1], lngLat[0]];

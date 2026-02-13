@@ -9,7 +9,7 @@ import { Adresse } from './data/adresse';
 import { OptimizationResult } from './services/OptimizationResult';
 import { Injector,runInInjectionContext } from '@angular/core';
 
-// 🔥 IMPORT DES DONNÉES PRÉ-CALCULÉES
+// Donnees pre-calculees
 import { matrix400  } from './data/dataSet400Adresses/matrix_377_complete';
 import { adresse400 } from './data/dataSet400Adresses/adresses_377._complete';
 import { Sweep } from './services/optimisation-sweep.service';
@@ -26,7 +26,6 @@ const lastAdressesKey = "adresses";
 const lastOptimizationResponseKey = "lastOptimizationResponse";
 const lastRoutesKey = "lastRoutes";
 
-
 @Component({
   selector: 'app-root',
   imports: [
@@ -37,25 +36,23 @@ const lastRoutesKey = "lastRoutes";
   styleUrl: './app.scss'
 })
 export class App {
-  // Services
   private readonly _srvCarto = inject(Carto);
-  private readonly _sweepService=inject(Sweep);
-  private readonly injector=inject(Injector);
+  private readonly _sweepService = inject(Sweep);
+  private readonly injector = inject(Injector);
   private readonly _srvOptimizeAdvanced = inject(OptimizeAdvancedService);
 
-  // 🔥 DONNÉES PRÉ-CALCULÉES - EXACTEMENT COMME LA PHOTO
- 
-  public changeDataSet(dataSet:number){
+  // Changement de jeu de donnees
+  public changeDataSet(dataSet: number){
     this._routes.set([])
-    if(dataSet==1){
+    if(dataSet == 1){
         this._adresses.set(adresse50)
         this._matrice.set(matrix50)
     }
-    else if(dataSet==2){
+    else if(dataSet == 2){
          this._adresses.set(adresse100)
         this._matrice.set(matrix100)
     }
-    else if(dataSet==3){
+    else if(dataSet == 3){
        this._adresses.set(adresse200)
         this._matrice.set(matrix200)
     }
@@ -65,16 +62,15 @@ export class App {
     }
   }
 
-  // Local state
   private readonly bounds = signal<LatLngBoundsLiteral>([[45.1, 5.6], [45.3, 5.9]]);
   protected readonly options: MapOptions = {
     zoom: 11,
     center: latLng(45.188529, 5.724524),
   };
 
-  // 🔥 PAR DÉFAUT, ON CHARGE adresse50 AU LIEU DE localStorage
+  // Par defaut, on charge adresse50
   private readonly _adresses = signal<readonly Adresse[]>(adresse50);
-   private readonly _matrice = signal< Matrice>(matrix400);
+  private readonly _matrice = signal<Matrice>(matrix400);
   private readonly _optimizationResult: WritableSignal<undefined | OptimizationResult>;
   private readonly _routes = signal<ReadonlyArray<ReadonlyArray<LatLngTuple>>>([]);
   protected readonly layers: Signal<Layer[]>;
@@ -112,33 +108,27 @@ export class App {
       lastOptStr && lastOptStr !== "undefined" ? JSON.parse(lastOptStr) : undefined
     );
 
-    // Sauvegarder les changements
     effect(() => localStorage.setItem(lastAdressesKey, JSON.stringify(this._adresses())));
     effect(() => {
       const opt = this._optimizationResult();
-      console.log("Optimization :", opt);
+      console.log("Optimization:", opt);
       localStorage.setItem(lastOptimizationResponseKey, JSON.stringify(opt));
     });
     effect(() => localStorage.setItem(lastRoutesKey, JSON.stringify(this._routes())));
   }
 
-  // 🔥 EXACTEMENT COMME LA PHOTO - ngOnInit AVEC LA BOUCLE
- 
-
-  // 🔥 PLUS BESOIN DE BOUTON - C'EST LE DÉFAUT !
-
   /**
-   * Filtre les adresses inaccessibles
+   * Filtre les adresses inaccessibles (trop eloignees de la route)
    */
   private async filterInaccessibleAddresses(): Promise<number> {
     const allAddresses = this._adresses();
     
     if (allAddresses.length === 0) {
-      console.warn('⚠️ No addresses to filter');
+      console.warn('No addresses to filter');
       return 0;
     }
 
-    console.log(`🔍 Checking accessibility for ${allAddresses.length} addresses...`);
+    console.log(`Checking accessibility for ${allAddresses.length} addresses...`);
     
     try {
       const matrixResult = await this._srvCarto.getDistanceMatrix(allAddresses);
@@ -153,25 +143,25 @@ export class App {
         } else {
           removedCount++;
           console.warn(
-            `⏭️ Removed: "${allAddresses[index].name}" ` +
+            `Removed: "${allAddresses[index].name}" ` +
             `(${source.snapped_distance.toFixed(0)}m from road)`
           );
         }
       });
       
       this._adresses.set(accessibleAddresses);
-      console.log(`✅ ${accessibleAddresses.length}/${allAddresses.length} addresses are accessible`);
+      console.log(`${accessibleAddresses.length}/${allAddresses.length} addresses are accessible`);
       
       return removedCount;
       
     } catch (err) {
-      console.error('❌ Error checking accessibility:', err);
+      console.error('Error checking accessibility:', err);
       throw err;
     }
   }
 
   /**
-   * Génère un nombre donné d'adresses aléatoires
+   * Genere un nombre donne d'adresses aleatoires
    */
   protected async generateAdresses(nb: number): Promise<void> {
     const bounds = this.bounds();
@@ -184,7 +174,7 @@ export class App {
     
     let remaining = nb;
 
-    console.log(`🎯 Target: ${nb} addresses\n`);
+    console.log(`Target: ${nb} addresses`);
 
     while (remaining > 0) {
       const points = Array.from({ length: remaining }, () => ({
@@ -193,39 +183,43 @@ export class App {
       }));
       
       await this._srvCarto.getAdressesFromCoordinates(points).then((adresses) => {
-        console.log(`📬 Fetched ${adresses.length} addresses`);
+        console.log(`Fetched ${adresses.length} addresses`);
         this._adresses.update(L => [...L, ...adresses]);
         remaining = nb - this._adresses().length;
-        console.log(`📊 Progress: ${this._adresses().length}/${nb} (remaining: ${remaining})`);
+        console.log(`Progress: ${this._adresses().length}/${nb} (remaining: ${remaining})`);
       });
     }
     
     const generatedCount = this._adresses().length;
-    console.log(`✅ All ${generatedCount} addresses generated.\n`);
+    console.log(`All ${generatedCount} addresses generated.`);
 
     const removedCount = await this.filterInaccessibleAddresses();
     
-    console.log(`\n📊 Final Results:`);
-    console.log(`  🎯 Requested: ${nb}`);
-    console.log(`  📍 Generated: ${generatedCount}`);
-    console.log(`  ✅ Accessible: ${this._adresses().length}`);
-    console.log(`  ❌ Removed: ${removedCount}`);
-    console.log(`  📈 Keep rate: ${(this._adresses().length/nb*100).toFixed(1)}%`);
+    console.log(`\nFinal Results:`);
+    console.log(`  Requested: ${nb}`);
+    console.log(`  Generated: ${generatedCount}`);
+    console.log(`  Accessible: ${this._adresses().length}`);
+    console.log(`  Removed: ${removedCount}`);
+    console.log(`  Keep rate: ${(this._adresses().length/nb*100).toFixed(1)}%`);
     
     if (this._adresses().length === 0) {
-      console.error('\n❌ No accessible addresses found!');
+      console.error('No accessible addresses found!');
       return;
     }
 
     this.downloadAdressesJson(this._adresses().length);
     await this.downloadMatrix(this._adresses().length);
   }
-protected async optimizeRoutesCluster(
+
+  /**
+   * Optimisation avec clustering
+   */
+  protected async optimizeRoutesCluster(
     nbVehicules: number,
     maxTimePerVehicule: number
   ): Promise<void> {
     this._routes.set([])
-    let matrix=this._matrice();
+    let matrix = this._matrice();
     const adresses = this._adresses();
 
     if (adresses.length === 0) {
@@ -236,11 +230,11 @@ protected async optimizeRoutesCluster(
     const parking = adresses.at(-1)!;
     const deliveries = adresses.slice(0, -1);
 
-    // Choisir entre optimize (simple) et optimizeAdvanced (complexe)
+    // Choix entre optimisation simple et avancee
     const useSimpleOptimization = deliveries.length <= 50 && nbVehicules <= 3;
 
     if (useSimpleOptimization) {
-      console.log('🚀 Optimization simple (≤50 adresses, ≤3 véhicules)');
+      console.log('Optimisation simple (≤50 adresses, ≤3 vehicules)');
       
       const optimizedRoute = await this._srvCarto.optimize({
         nbVehicules,
@@ -264,7 +258,7 @@ protected async optimizeRoutesCluster(
 
       this._routes.set(allDirections);
     } else {
-      console.log('🚀 Optimization avancée (>50 adresses ou >3 véhicules)');
+      console.log('Optimisation avancee (>50 adresses ou >3 vehicules)');
 
       const result = await this._srvOptimizeAdvanced.optimizeAdvanced({
         nbVehicules,
@@ -277,22 +271,19 @@ protected async optimizeRoutesCluster(
         }
       });
 
-      // Afficher les statistiques
-      console.log(`\n📊 Statistiques finales :`);
-      console.log(`  ✅ Adresses livrées : ${result.stats.deliveredCount}/${result.stats.totalAddresses}`);
-      console.log(`  📈 Taux de réussite : ${result.stats.successRate.toFixed(1)}%`);
-      console.log(`  🚛 Routes créées : ${result.stats.totalRoutes}`);
+      console.log(`\nStatistiques finales:`);
+      console.log(`  Adresses livrees: ${result.stats.deliveredCount}/${result.stats.totalAddresses}`);
+      console.log(`  Taux de reussite: ${result.stats.successRate.toFixed(1)}%`);
+      console.log(`  Routes creees: ${result.stats.totalRoutes}`);
       
       if (result.stats.undeliveredCount > 0) {
-        console.warn(`  ⚠️ ${result.stats.undeliveredCount} adresses non livrées`);
+        console.warn(`${result.stats.undeliveredCount} adresses non livrees`);
       }
 
-      // Stocker le premier résultat pour compatibilité
       if (result.results.length > 0) {
         this._optimizationResult.set(result.results[0]);
       }
 
-      // Récupérer les directions pour toutes les routes
       const allDirections: ReadonlyArray<LatLngTuple>[] = [];
 
       for (const routeResult of result.results) {
@@ -307,14 +298,14 @@ protected async optimizeRoutesCluster(
       this._routes.set(allDirections);
     }
   }
-  /**
-   * Optimisation des routes
-   */
 
-protected optimizeRoutesSweepe(
+  /**
+   * Optimisation simple (sweep)
+   */
+  protected optimizeRoutesSweepe(
     nbVehicules: number,
     maxTimePerVehicule: number,
-    adresses?:readonly Adresse[]
+    adresses?: readonly Adresse[]
   ): void {
    
     if (!adresses || adresses.length === 0) {
@@ -347,13 +338,15 @@ protected optimizeRoutesSweepe(
     );
   }
 
+  /**
+   * Optimisation equitable (repartition uniforme)
+   */
   protected async optimizeRoutesEquitable(
     nbVehicules: number,
     maxTimePerVehicule: number,
-    
   ): Promise<void> {
-    let adresses=this._adresses()
-    if ( adresses.length === 0) {
+    let adresses = this._adresses()
+    if (adresses.length === 0) {
       console.warn('No addresses to optimize.');
       return;
     }
@@ -376,7 +369,7 @@ protected optimizeRoutesSweepe(
           );
           
           this._routes.set(allRoutes);
-          console.log(`\n🗺️ ${allRoutes.length} tracé(s) affiché(s) sur la carte (${results.length} paquets)`);
+          console.log(`${allRoutes.length} trace(s) affiche(s) sur la carte (${results.length} paquets)`);
         }
         return [];
       }
@@ -389,7 +382,7 @@ protected optimizeRoutesSweepe(
   }
 
   /**
-   * Télécharge les adresses au format JSON
+   * Telecharge les adresses au format JSON
    */
   private downloadAdressesJson(nb: number): void {
     const data = JSON.stringify(this._adresses(), null, 2);
@@ -403,7 +396,7 @@ protected optimizeRoutesSweepe(
   }
 
   /**
-   * Télécharge la matrice de distances
+   * Telecharge la matrice de distances
    */
   private async downloadMatrix(nb: number): Promise<void> {
     try {
@@ -413,7 +406,7 @@ protected optimizeRoutesSweepe(
       console.log(`Average snapped distance: ${avgSnappedDistance.toFixed(2)}m`);
       
       if (avgSnappedDistance > 100) {
-        console.warn('⚠️ High snapped distances detected!');
+        console.warn('High snapped distances detected!');
       }
 
       const data = JSON.stringify({
@@ -442,103 +435,96 @@ protected optimizeRoutesSweepe(
     }
   }
 
-
-
-
+  /**
+   * Optimise et ajoute les routes aux existantes
+   */
   protected async optimizeRoutesAndAppend(
-  nbVehicules: number,
-  maxTimePerVehicule: number,
-  adresses: readonly Adresse[]
-): Promise<void> {
+    nbVehicules: number,
+    maxTimePerVehicule: number,
+    adresses: readonly Adresse[]
+  ): Promise<void> {
 
-  const previousRoutes = this._routes();
+    const previousRoutes = this._routes();
 
-  // appel SANS modifier optimizeRoutes
-  this.optimizeRoutesSweepe(nbVehicules, maxTimePerVehicule, adresses);
+    this.optimizeRoutesSweepe(nbVehicules, maxTimePerVehicule, adresses);
 
-  // attendre la vraie mise à jour de _routes
-  const newRoutes = await runInInjectionContext(
-    this.injector,
-    () =>
-      new Promise<ReadonlyArray<ReadonlyArray<LatLngTuple>>>(resolve => {
-        const ref = effect(() => {
-          const current = this._routes();
-          if (current !== previousRoutes) {
-            ref.destroy();
-            resolve(current);
-          }
-        });
-      })
-  );
+    const newRoutes = await runInInjectionContext(
+      this.injector,
+      () =>
+        new Promise<ReadonlyArray<ReadonlyArray<LatLngTuple>>>(resolve => {
+          const ref = effect(() => {
+            const current = this._routes();
+            if (current !== previousRoutes) {
+              ref.destroy();
+              resolve(current);
+            }
+          });
+        })
+    );
 
-  // concaténation des routes 
-  this._routes.set([
-    ...previousRoutes,
-    ...newRoutes
-  ]);
+    this._routes.set([
+      ...previousRoutes,
+      ...newRoutes
+    ]);
+  }
 
+  /**
+   * Optimisation par balayage angulaire (sweep)
+   */
+  public async optimizationSweeper(vehicules: number, time: number): Promise<void> {
+    let vehiculesRestant = vehicules;
+    this._routes.set([]);
 
-}
+    const parking = this._adresses().at(-1)!;
+    const angles = this._sweepService.constructionDesAngles(this._adresses(), parking);
+    const chunks = this._sweepService.constructionChunkes(angles);
 
+    console.log(`${chunks.length} chunks generes.`);
 
-public async optimizationSweeper(vehicules: number, time: number): Promise<void> {
-  // nombre de véhicules insérés par l'utilisatuer 
-  let vehiculesRestant = vehicules;
-  this._routes.set([]);
+    for (const chunk of chunks) {
+      let routesAvant = JSON.parse(JSON.stringify(this._routes()));
+      let chunkSolved = false;
 
-  const parking = this._adresses().at(-1)!;
-  const angles = this._sweepService.constructionDesAngles(this._adresses(), parking);
-  const chunks = this._sweepService.constructionChunkes(angles);
-
-  console.log(`${chunks.length} chunks générés.`);
-
-  for (const chunk of chunks) {
-    let routesAvant = JSON.parse(JSON.stringify(this._routes()));
-    let chunkSolved = false;
-
-    if (vehiculesRestant === 0) {
-      console.warn(" Plus de véhicules disponibles !");
-      break;
-    }
-
-    const chunkWithParking = [...chunk, parking];
-
-  
-    for (let vehiculeCurrent = 1; vehiculeCurrent <= 3; vehiculeCurrent++) {
-      if (vehiculeCurrent > vehiculesRestant) break;
-
-      console.log(`je vais essayer  ${vehiculeCurrent} véhicule(s) pour ce chunk`);
-
-      await this.optimizeRoutesAndAppend(vehiculeCurrent, time, chunkWithParking);
-
-      const unassignedLength = this._optimizationResult()?.unassigned?.length ?? 0;
-      console.log(`Adresses non livrées : ${unassignedLength}`);
-
-      if (unassignedLength === 0) {
-        vehiculesRestant -= vehiculeCurrent;
-        chunkSolved = true;
-        break; // on passe au chunk suivant
-      } else {
-        console.warn(` Impossible avec ${vehiculeCurrent} véhicule(s), `);
-        this._routes.set(routesAvant);
-        this._optimizationResult.set(undefined);
+      if (vehiculesRestant === 0) {
+        console.warn("Plus de vehicules disponibles");
+        break;
       }
+
+      const chunkWithParking = [...chunk, parking];
+
+      for (let vehiculeCurrent = 1; vehiculeCurrent <= 3; vehiculeCurrent++) {
+        if (vehiculeCurrent > vehiculesRestant) break;
+
+        console.log(`Essai avec ${vehiculeCurrent} vehicule(s) pour ce chunk`);
+
+        await this.optimizeRoutesAndAppend(vehiculeCurrent, time, chunkWithParking);
+
+        const unassignedLength = this._optimizationResult()?.unassigned?.length ?? 0;
+        console.log(`Adresses non livrees: ${unassignedLength}`);
+
+        if (unassignedLength === 0) {
+          vehiculesRestant -= vehiculeCurrent;
+          chunkSolved = true;
+          break;
+        } else {
+          console.warn(`Impossible avec ${vehiculeCurrent} vehicule(s)`);
+          this._routes.set(routesAvant);
+          this._optimizationResult.set(undefined);
+        }
+      }
+
+      if (!chunkSolved) {
+        console.warn("Ce chunk n'a pas pu etre resolu, passage au suivant");
+        this._routes.set(routesAvant);
+      }
+
+      await new Promise(r => setTimeout(r, 1000));
     }
 
-    if (!chunkSolved) {
-      console.warn("ce chunk n'as pas pu être résolu ,je vais passer au suivant ");
-     
-      this._routes.set(routesAvant);
+    const Vehiculesutilises = vehicules - vehiculesRestant;
+    console.log(`Optimisation terminee. Vehicules utilises: ${Vehiculesutilises}`);
+    if(Vehiculesutilises < vehicules){
+      console.log("Le nombre de vehicules necessaires est seulement " + Vehiculesutilises);
     }
-
-    // Pause 
-    await new Promise(r => setTimeout(r, 1000));
   }
-
-  const Vehiculesutilisés = vehicules - vehiculesRestant;
-  console.log(` Optimisation terminée. Véhicules utilisés : ${Vehiculesutilisés}`);
-  if(Vehiculesutilisés<vehicules){
-    console.log("le nombre de véhicules nécessaires est seulement "+Vehiculesutilisés);
-  }
-}
 }

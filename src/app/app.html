@@ -13,7 +13,7 @@
 
   <div class="controls-section">
     <!-- Sélection du dataset -->
-    <div class="control-card">
+    <div class="control-card dataset-card">
       <div class="card-header">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"></path>
@@ -53,7 +53,7 @@
     </div>
 
     <!-- Paramètres d'optimisation -->
-    <div class="control-card">
+    <div class="control-card params-card">
       <div class="card-header">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="3"></circle>
@@ -62,32 +62,30 @@
         <h2>Paramètres</h2>
       </div>
       <div class="control-form">
-        <div class="form-row">
-          <div class="form-group">
-            <label for="numberOfVehicles">Nombre de véhicules</label>
-            <input 
-              #nbVehicules 
-              id="numberOfVehicles"
-              name="numberOfVehicles" 
-              type="number" 
-              min="1" 
-              max="3" 
-              placeholder="Max: 3" 
-              value="3" 
-              class="form-input" />
-          </div>
-          <div class="form-group">
-            <label for="maxTime">Temps max par véhicule (s)</label>
-            <input 
-              #maxTime 
-              id="maxTime"
-              name="maxTime" 
-              type="number" 
-              min="1" 
-              placeholder="Ex: 10000" 
-              value="10000" 
-              class="form-input" />
-          </div>
+        <div class="form-group">
+          <label for="numberOfVehicles">Nombre de véhicules</label>
+          <input 
+            #nbVehicules 
+            id="numberOfVehicles"
+            name="numberOfVehicles" 
+            type="number" 
+            min="1" 
+            max="3" 
+            placeholder="Max: 3" 
+            value="3" 
+            class="form-input" />
+        </div>
+        <div class="form-group">
+          <label for="maxTime">Temps max par véhicule (s)</label>
+          <input 
+            #maxTime 
+            id="maxTime"
+            name="maxTime" 
+            type="number" 
+            min="1" 
+            placeholder="Ex: 10000" 
+            value="10000" 
+            class="form-input" />
         </div>
       </div>
     </div>
@@ -151,7 +149,7 @@
 
 <style>
   .container {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
     padding: 2rem;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
@@ -180,20 +178,20 @@
   }
 
   .map-wrapper {
-    height: 500px;
+    height: 600px;
     background: #f7fafc;
   }
 
   .controls-section {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
   }
 
   .control-card {
     background: white;
     border-radius: 12px;
-    padding: 1.5rem;
+    padding: 1.25rem;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05), 0 4px 12px rgba(0, 0, 0, 0.08);
     transition: transform 0.2s, box-shadow 0.2s;
   }
@@ -211,34 +209,28 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.875rem;
     border-bottom: 2px solid #e2e8f0;
   }
 
   .card-header h2 {
-    font-size: 1.25rem;
+    font-size: 1.125rem;
     font-weight: 600;
     color: #2d3748;
     margin: 0;
   }
 
   .icon {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     color: #667eea;
   }
 
   .control-form {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-  }
-
-  .form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
+    gap: 0.875rem;
   }
 
   .form-group {
@@ -254,10 +246,10 @@
   }
 
   .form-input {
-    padding: 0.75rem 1rem;
+    padding: 0.625rem 0.875rem;
     border: 2px solid #e2e8f0;
     border-radius: 8px;
-    font-size: 1rem;
+    font-size: 0.938rem;
     transition: all 0.2s;
     background: white;
   }
@@ -275,12 +267,12 @@
   /* Grille des datasets */
   .dataset-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.75rem;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.625rem;
   }
 
   .btn-dataset {
-    padding: 1rem;
+    padding: 0.875rem 0.5rem;
     border: 2px solid transparent;
     border-radius: 10px;
     cursor: pointer;
@@ -289,7 +281,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
+    gap: 0.375rem;
     background: white;
     position: relative;
     overflow: hidden;
@@ -320,13 +312,13 @@
   }
 
   .dataset-icon {
-    font-size: 2rem;
+    font-size: 1.75rem;
     font-weight: 700;
     line-height: 1;
   }
 
   .dataset-label {
-    font-size: 0.875rem;
+    font-size: 0.813rem;
     font-weight: 500;
     opacity: 0.8;
   }
@@ -387,19 +379,19 @@
   /* Grille des méthodes d'optimisation */
   .optimization-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 1rem;
   }
 
   .btn-optimize {
-    padding: 1.25rem 1.5rem;
+    padding: 1.125rem 1.25rem;
     border: none;
     border-radius: 12px;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.875rem;
     text-align: left;
     position: relative;
     overflow: hidden;
@@ -422,8 +414,8 @@
   }
 
   .btn-optimize .btn-icon {
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
     flex-shrink: 0;
   }
 
@@ -434,13 +426,13 @@
   }
 
   .btn-title {
-    font-size: 1rem;
+    font-size: 0.938rem;
     font-weight: 600;
     display: block;
   }
 
   .btn-subtitle {
-    font-size: 0.813rem;
+    font-size: 0.75rem;
     opacity: 0.9;
     display: block;
   }
@@ -480,6 +472,21 @@
     transform: translateY(0);
   }
 
+  /* Responsive */
+  @media (max-width: 900px) {
+    .controls-section {
+      grid-template-columns: 1fr;
+    }
+
+    .optimization-methods {
+      grid-column: 1;
+    }
+
+    .optimization-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
   @media (max-width: 768px) {
     .container {
       padding: 1rem;
@@ -490,33 +497,21 @@
     }
 
     .map-wrapper {
-      height: 350px;
-    }
-
-    .controls-section {
-      grid-template-columns: 1fr;
-    }
-
-    .form-row {
-      grid-template-columns: 1fr;
+      height: 400px;
     }
 
     .dataset-grid {
       grid-template-columns: repeat(2, 1fr);
     }
+  }
 
-    .optimization-grid {
-      grid-template-columns: 1fr;
+  @media (min-width: 1200px) {
+    .map-wrapper {
+      height: 650px;
     }
   }
 
-  @media (min-width: 1024px) {
-    .optimization-grid {
-      grid-template-columns: repeat(3, 1fr);
-    }
-  }
-
-  @media (min-width: 640px) {
+  @media (min-width: 640px) and (max-width: 900px) {
     .dataset-grid {
       grid-template-columns: repeat(4, 1fr);
     }
