@@ -386,23 +386,24 @@ private async downloadMatrix(nb: number): Promise<void> {
 
 
 
-public async megaOptimization(vehicules: number): Promise<void> {
+public async megaOptimization(vehicules: number,time:number): Promise<void> {
   let vehiculesRestant = vehicules;
 
   // clear previous routes
   this._routes.set([]);
 
   const parking = this._adresses().at(-1)!;
-
+  // creéation des angles et chunks
   const angles = this._sweepService.constructionDesAngles(this._adresses(), parking);
   const chunks = this._sweepService.constructionChunkes(angles);
 
-  console.log(`🔹 ${chunks.length} chunks générés par Sweep.`);
+  console.log(` ${chunks.length} chunks générés .`);
 
   for (const chunk of chunks) {
-
+    let routes = JSON.parse(JSON.stringify(this._routes()));
     if (vehiculesRestant === 0) {
-      console.warn('⛔ Plus de véhicules disponibles');
+      this._routes.set([]);
+      console.warn("il faut ajouter plus de livreurs ");
       break;
     }
 
@@ -412,37 +413,48 @@ public async megaOptimization(vehicules: number): Promise<void> {
     // essayer 1 → 2 → 3 véhicules
     for (let vehiculeCurrent = 1; vehiculeCurrent <= 3; vehiculeCurrent++) {
 
-      if (vehiculeCurrent > vehiculesRestant) break;
+      if (vehiculeCurrent > vehiculesRestant) {
+       this._routes.set(routes);
+        break;
 
-      console.log(`🚚 Tentative avec ${vehiculeCurrent} véhicule(s)`);
+      };
+
+      console.log(`  j'essaye  avec ${vehiculeCurrent} véhicule(s)`);
 
       await this.optimizeRoutesAndAppend(
         vehiculeCurrent,
-        10000,
+        time,
         chunkWithParking
       );
 
       const unassignedLength = this._optimizationResult()?.unassigned?.length ?? 0;
+      console.log(unassignedLength);
 
-      if (unassignedLength === 0) {
-        console.log(`✅ Chunk résolu avec ${vehiculeCurrent} véhicule(s)`);
-
+      if (unassignedLength > 0) {
+         console.log(` adresses non  livrés = ${unassignedLength}`);
+         this._routes.set(routes);       // on restaure l’état précédent
+        this._optimizationResult.set(undefined); // on réinitialise le résultat
+        
+      
+      }
+      else if(unassignedLength==0){
         vehiculesRestant -= vehiculeCurrent;
-        solved = true;
         break;
       }
 
-      console.warn(`❌ Échec avec ${vehiculeCurrent} véhicule(s)`);
+     
     }
 
-    if (!solved) {
-      console.warn('⚠️ Chunk ignoré (max 3 véhicules insuffisants)');
-    }
+ 
 
     await new Promise(r => setTimeout(r, 3000));
   }
 
-  console.log('🏁 Fin de l’optimisation');
+
+  if(vehiculesRestant<vehicules){
+    console.log("il suffit d'avoir "+(vehicules-vehiculesRestant)+"pour livrer tous les adresses");
+  }
+
 }
 
   

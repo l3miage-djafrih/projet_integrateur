@@ -9,7 +9,7 @@ import { AngleClient, AnglesClients } from "../data/AnglesClients";
 export class Sweep{
 
    
-// exemple de création d'angle pour un seul client , il faut étendre ça à tous les clients 
+// exemple de création d'angle pour un seul client ,
 /*const depot = turf.point([lng0, lat0]);
 const client = turf.point([lng, lat]);
 
