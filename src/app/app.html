@@ -51,7 +51,7 @@
         </svg>
         <h2>Optimisation des routes</h2>
       </div>
-      <form (submit)="optimizeRoutes(nbVehicules.valueAsNumber, maxTime.valueAsNumber)" class="control-form">
+      <form (submit)="optimizeRoutesEquitable(nbVehicules.valueAsNumber, maxTime.valueAsNumber)" class="control-form">
         <div class="form-row">
           <div class="form-group">
             <label for="numberOfVehicles">Nombre de véhicules</label>
@@ -83,7 +83,32 @@
           <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
           </svg>
-          Optimiser les routes
+          Optimiser équitablement
+        </button>
+      </form>
+    </div>
+
+    <div class="control-card">
+      <div class="card-header">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+          <path d="M12 22V12"></path>
+          <path d="M3.3 7L12 12l8.7-5"></path>
+          <circle cx="12" cy="12" r="2"></circle>
+          <path d="M7.5 9.5L12 12l4.5-2.5"></path>
+        </svg>
+        <h2>Optimisation balayeuse</h2>
+      </div>
+      <form (submit)="optimizationSweeper(nbVehicules.valueAsNumber, maxTime.valueAsNumber)" class="control-form">
+        <button type="submit" class="btn btn-tertiary">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 10.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10.5"></path>
+            <polyline points="16 2 22 8 16 8"></polyline>
+            <line x1="10" y1="14" x2="21" y2="14"></line>
+            <line x1="10" y1="18" x2="18" y2="18"></line>
+            <polyline points="15 2 15 8 21 8"></polyline>
+          </svg>
+          Optimiser nb tournées
         </button>
       </form>
     </div>
@@ -253,6 +278,21 @@
   }
 
   .btn-secondary:active {
+    transform: translateY(0);
+  }
+
+  .btn-tertiary {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    color: white;
+    width: 100%;
+  }
+
+  .btn-tertiary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(67, 233, 123, 0.4);
+  }
+
+  .btn-tertiary:active {
     transform: translateY(0);
   }
 
