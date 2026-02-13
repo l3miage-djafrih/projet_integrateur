@@ -51,41 +51,39 @@
         </svg>
         <h2>Optimisation des routes</h2>
       </div>
-      <form (submit)="optimizeRoutes(nbVehicules.valueAsNumber, maxTime.valueAsNumber)" class="control-form">
-        <div class="form-row">
-          <div class="form-group">
-            <label for="numberOfVehicles">Nombre de véhicules</label>
-            <input 
-              #nbVehicules 
-              id="numberOfVehicles"
-              name="numberOfVehicles" 
-              type="number" 
-              min="1" 
-              max="3" 
-              placeholder="Max: 3" 
-              value="3" 
-              class="form-input" />
-          </div>
-          <div class="form-group">
-            <label for="maxTime">Temps max par véhicule (s)</label>
-            <input 
-              #maxTime 
-              id="maxTime"
-              name="maxTime" 
-              type="number" 
-              min="1" 
-              placeholder="Ex: 10000" 
-              value="10000" 
-              class="form-input" />
-          </div>
-        </div>
-        <button type="submit" class="btn btn-secondary">
-          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
-          </svg>
-          Optimiser les routes
-        </button>
-      </form>
+<form (submit)="optimizeRoutesScaled(nbVehicules.valueAsNumber, maxTime.valueAsNumber); $event.preventDefault()">
+  <div class="form-row">
+    <div class="form-group">
+      <label for="numberOfVehicles">Nombre de véhicules</label>
+      <input 
+        #nbVehicules 
+        id="numberOfVehicles"
+        name="numberOfVehicles" 
+        type="number" 
+        min="1" 
+        max="3" 
+        placeholder="Max: 3" 
+        value="3" 
+        class="form-input" />
+    </div>
+    <div class="form-group">
+      <label for="maxTime">Temps max par véhicule (minutes)</label>
+      <input 
+        #maxTime 
+        id="maxTime"
+        name="maxTime" 
+        type="number" 
+        min="1" 
+        placeholder="Ex: 60" 
+        value="60" 
+        class="form-input" />
+    </div>
+  </div>
+  <button type="submit" class="btn btn-secondary">
+    Optimiser les routes
+  </button>
+</form>
+
     </div>
   </div>
 </div>
