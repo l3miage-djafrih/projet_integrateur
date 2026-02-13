@@ -148,6 +148,6 @@ Adresses JSON → Matrice pré-calculée → K-Medoids clustering
 
 ## Phase 3 :  
 ### Implémentation des algorithmes :  
-On a implémenté ces 3 algorithmes mais ils marchent pas parfaitement, il y a quelques nuances qu'on arrive pas à résoudre en une semaine mais on va les améliorer prochainement, voici une petite explication :  
+On a implémenté ces 3 algorithmes mais ils marchent pas parfaitement, il y a quelques nuances qu'on arrive pas à résoudre actuellement mais on va les améliorer prochainement, voici une petite explication :  
 - Soit il construit des tournées selon le nombre de clusters disponibles, et donc il prend pas en consédération le nombre de véhicules, en ce cas là pour pouvoir effectuer toutes les tournées, chaque véhicule doit prendre au moins une tournée (le but c'est de ne pas laisser une tournée sans véhicule).
-- Soit il construit des tournées selon le nombre de véhicules, en ce cas là toutes les tournées sont affectées, mais chacune possède au maximum 50 adresses, si par exemple on a 200 adresses et 3 véhécules, il va prendre 150 seulement et laisser 50.  
+- Soit il construit des tournées selon le nombre de véhicules, en ce cas là toutes les tournées sont affectées, mais chacune possède au maximum 50 adresses, si par exemple on a 200 adresses et 3 véhécules, il va prendre 150 seulement et laisser 50. 
