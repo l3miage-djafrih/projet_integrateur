@@ -21,5 +21,12 @@ angle = atan2(dy, dx)
 
 # Génration des routes optimisées 
  aprés la génération des chunks d'adresses on parcours chaque chunk et on effectue un appel api d'optimisation par chunk ,en affectant n<=3, livreurs par chunk ,
+ # méthode d'optimization 
+
+ L’algorithme d’optimisation optimizationSweeper optimise le critère du nombre de véhicules.
+En parcourant chaque chunk, il affecte 1 livreur.
+Si tous les colis ont pu être livrés, on passe au chunk suivant.
+Sinon, il affecte 2 livreurs, puis 3.
+S’il y a besoin de plus de 3 livreurs, le chunk est ignoré et on passe au suivant.
 
 

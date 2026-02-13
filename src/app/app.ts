@@ -48,7 +48,7 @@ export class App {
   };
 
   public readonly _adresses = signal<readonly Adresse[]>(
-    adresse100) 
+    adresse400) 
   
   private readonly _optimizationResult: WritableSignal<undefined | OptimizationResult>;
   private readonly _routes = signal<ReadonlyArray<ReadonlyArray<LatLngTuple>>>(
@@ -276,40 +276,7 @@ protected async generateAdresses(nb: number): Promise<void> {
 
 
 
-protected async optimizeRoutesAndAppend(
-  nbVehicules: number,
-  maxTimePerVehicule: number,
-  adresses: readonly Adresse[]
-): Promise<void> {
 
-  const previousRoutes = this._routes();
-
-  // appel SANS modifier optimizeRoutes
-  this.optimizeRoutes(nbVehicules, maxTimePerVehicule, adresses);
-
-  // attendre la vraie mise à jour de _routes
-  const newRoutes = await runInInjectionContext(
-    this.injector,
-    () =>
-      new Promise<ReadonlyArray<ReadonlyArray<LatLngTuple>>>(resolve => {
-        const ref = effect(() => {
-          const current = this._routes();
-          if (current !== previousRoutes) {
-            ref.destroy();
-            resolve(current);
-          }
-        });
-      })
-  );
-
-  // append garanti
-  this._routes.set([
-    ...previousRoutes,
-    ...newRoutes
-  ]);
-
-  console.log('✅ Routes cumulées:', this._routes().length);
-}
 
 
 
@@ -386,75 +353,113 @@ private async downloadMatrix(nb: number): Promise<void> {
 
 
 
-public async megaOptimization(vehicules: number,time:number): Promise<void> {
-  let vehiculesRestant = vehicules;
 
-  // clear previous routes
+
+
+
+
+
+
+
+
+
+
+
+protected async optimizeRoutesAndAppend(
+  nbVehicules: number,
+  maxTimePerVehicule: number,
+  adresses: readonly Adresse[]
+): Promise<void> {
+
+  const previousRoutes = this._routes();
+
+  // appel SANS modifier optimizeRoutes
+  this.optimizeRoutes(nbVehicules, maxTimePerVehicule, adresses);
+
+  // attendre la vraie mise à jour de _routes
+  const newRoutes = await runInInjectionContext(
+    this.injector,
+    () =>
+      new Promise<ReadonlyArray<ReadonlyArray<LatLngTuple>>>(resolve => {
+        const ref = effect(() => {
+          const current = this._routes();
+          if (current !== previousRoutes) {
+            ref.destroy();
+            resolve(current);
+          }
+        });
+      })
+  );
+
+  // concaténation des routes 
+  this._routes.set([
+    ...previousRoutes,
+    ...newRoutes
+  ]);
+
+
+}
+
+
+public async optimizationSweeper(vehicules: number, time: number): Promise<void> {
+  // nombre de véhicules insérés par l'utilisatuer 
+  let vehiculesRestant = vehicules;
   this._routes.set([]);
 
   const parking = this._adresses().at(-1)!;
-  // creéation des angles et chunks
   const angles = this._sweepService.constructionDesAngles(this._adresses(), parking);
   const chunks = this._sweepService.constructionChunkes(angles);
 
-  console.log(` ${chunks.length} chunks générés .`);
+  console.log(`${chunks.length} chunks générés.`);
 
   for (const chunk of chunks) {
-    let routes = JSON.parse(JSON.stringify(this._routes()));
+    let routesAvant = JSON.parse(JSON.stringify(this._routes()));
+    let chunkSolved = false;
+
     if (vehiculesRestant === 0) {
-      this._routes.set([]);
-      console.warn("il faut ajouter plus de livreurs ");
+      console.warn(" Plus de véhicules disponibles !");
       break;
     }
 
     const chunkWithParking = [...chunk, parking];
-    let solved = false;
 
-    // essayer 1 → 2 → 3 véhicules
+  
     for (let vehiculeCurrent = 1; vehiculeCurrent <= 3; vehiculeCurrent++) {
+      if (vehiculeCurrent > vehiculesRestant) break;
 
-      if (vehiculeCurrent > vehiculesRestant) {
-       this._routes.set(routes);
-        break;
+      console.log(`je vais essayer  ${vehiculeCurrent} véhicule(s) pour ce chunk`);
 
-      };
-
-      console.log(`  j'essaye  avec ${vehiculeCurrent} véhicule(s)`);
-
-      await this.optimizeRoutesAndAppend(
-        vehiculeCurrent,
-        time,
-        chunkWithParking
-      );
+      await this.optimizeRoutesAndAppend(vehiculeCurrent, time, chunkWithParking);
 
       const unassignedLength = this._optimizationResult()?.unassigned?.length ?? 0;
-      console.log(unassignedLength);
+      console.log(`Adresses non livrées : ${unassignedLength}`);
 
-      if (unassignedLength > 0) {
-         console.log(` adresses non  livrés = ${unassignedLength}`);
-         this._routes.set(routes);       // on restaure l’état précédent
-        this._optimizationResult.set(undefined); // on réinitialise le résultat
-        
-      
-      }
-      else if(unassignedLength==0){
+      if (unassignedLength === 0) {
         vehiculesRestant -= vehiculeCurrent;
-        break;
+        chunkSolved = true;
+        break; // on passe au chunk suivant
+      } else {
+        console.warn(` Impossible avec ${vehiculeCurrent} véhicule(s), `);
+        this._routes.set(routesAvant);
+        this._optimizationResult.set(undefined);
       }
-
-     
     }
 
- 
+    if (!chunkSolved) {
+      console.warn("ce chunk n'as pas pu être résolu ,je vais passer au suivant ");
+     
+      this._routes.set(routesAvant);
+    }
 
-    await new Promise(r => setTimeout(r, 3000));
+    // Pause 
+    await new Promise(r => setTimeout(r, 1000));
   }
 
-
-  if(vehiculesRestant<vehicules){
-    console.log("il suffit d'avoir "+(vehicules-vehiculesRestant)+"pour livrer tous les adresses");
+  const Vehiculesutilisés = vehicules - vehiculesRestant;
+  console.log(` Optimisation terminée. Véhicules utilisés : ${Vehiculesutilisés}`);
+  if(Vehiculesutilisés<vehicules){
+    console.log("le nombre de véhicules nécessaires est seulement "+Vehiculesutilisés);
   }
-
 }
 
   
