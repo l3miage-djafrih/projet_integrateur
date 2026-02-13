@@ -37,16 +37,16 @@ Cette méthode :
 - récupère le signal _adresses, qui contient la liste des adresses générées,
 - permet de sauvegarder ces adresses dans un fichier JSON.  
 Elle fonctionne pour : 50 adresses, 100 adresses, 400 adresses.  
-Les fichiers générés sont disponibles dans le dossier : 'src/app/data' (les fichiers adresses).  
+Les fichiers générés sont disponibles dans le dossier : `src/app/data` (les fichiers adresses).  
 
 
 ### Filtrage des adresses :  
 Après la génération des jeux de données, nous avons quelques adresses non accessibles, alors on a évité de les stocker dans la matrice, et gardé que les adresses atteignables.  
 Cela se fait grâce au calcul de l'attribut snapped distance qui représente la distance entre l'adresse et la route la plus proche, si sa valeur est grande alors on l'enlève de la matrice, c'est pour ça qu'on a moins d'adresses dans les fichiers du dataset :  
-50 → 47 
-100 → 96  
-200 → 187  
-400 → 377  
+50 → 47   
+100 → 96    
+200 → 187    
+400 → 377    
 
 
 ## Phase 2 :  
@@ -55,7 +55,7 @@ La construction de la matrice se fait à l’aide de l’API Matrix d’ORS.
 #### a/ Cas de 50 points de livraison  
 Le calcul fonctionne directement avec un seul appel API.  
 Les limites d’ORS ne sont pas dépassées.  
-Une matrice 50 × 50 est générée, contenant les distances et les temps de trajet pour toutes les combinaisons possibles de points. Un exemple de la matrice est disponible dans 'src/app/data/dataSet50Adresses/matrix_47_complete.ts'  
+Une matrice 50 × 50 est générée, contenant les distances et les temps de trajet pour toutes les combinaisons possibles de points. Un exemple de la matrice est disponible dans `src/app/data/dataSet50Adresses/matrix_47_complete.ts`  
 
 #### b/ Cas de plus de 50 points de livraison (100, 400, ...)  
 Dans ce cas, les limites d’ORS sont dépassées.  
@@ -70,7 +70,7 @@ M3 : [50..99] × [0..49]
 M4 : [50..99] × [50..99]  
 Cela nécessite 4 appels API, puis une reconstruction de la matrice complète.  
 Pour 400 points, on obtient 64 sous-matrices donc cela nécessite 64 appels API.  
-Des exemples de matrices sont disponible dans le dossier 'src/app/data' (les fichiers matrix).  
+Des exemples de matrices sont disponible dans le dossier `src/app/data` (les fichiers matrix).  
 
 
 ### Les stratégies suivies pour casser la complexité :  
@@ -125,6 +125,7 @@ Après l'optimisation, un rapport détaillé est généré, indiquant les statis
 
 #### Algo 3 : K-Medoids clustering  
 ##### Un petit schéma (récapitulatif) de l'algo :  
+```
 Adresses JSON → Matrice pré-calculée → K-Medoids clustering  
                         ↓  
         Clusters (groupes d'adresses par véhicule)  
@@ -132,7 +133,7 @@ Adresses JSON → Matrice pré-calculée → K-Medoids clustering
         Appels ORS par cluster → Routes optimisées  
                         ↓  
         Directions (polylines) → Affichage carte  
-
+```  
 ##### K-Medoids en bref  
 1. Divise les adresses en k clusters (k = nombre de véhicules)  
 2. Utilise les durées de trajet (pas les distances GPS)  
