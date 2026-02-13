@@ -1,7 +1,8 @@
 import { Component, computed, inject, Signal, signal, WritableSignal } from '@angular/core';
 import { LeafletModule } from '@bluehalo/ngx-leaflet';
 import { latLng, LatLngBoundsLiteral, LatLngTuple, Layer, MapOptions, polyline, Rectangle, rectangle, tileLayer } from 'leaflet';
-import { Carto, OptimizationAdvancedResult } from './services/carto';
+import { Carto } from './services/carto';
+import { OptimizationAdvancedResult, OptimizeAdvancedService } from './services/optimize-advanced';
 import { getMarker } from './utils/marker';
 import { FormsModule } from '@angular/forms';
 import { Adresse } from './data/adresse';
@@ -18,6 +19,7 @@ import { matrix100 } from './data/dataSet100Adresses/matrix_96_complete';
 export class App {
 
   private readonly _srvCarto = inject(Carto);
+  private readonly _srvOptimizeAdvanced = inject(OptimizeAdvancedService);
 
   private readonly bounds = signal<LatLngBoundsLiteral>([[45.1, 5.6], [45.3, 5.9]]);
 
@@ -126,7 +128,7 @@ export class App {
     } else {
       console.log('🚀 Optimization avancée (>50 adresses ou >3 véhicules)');
 
-      const result = await this._srvCarto.optimizeAdvanced({
+      const result = await this._srvOptimizeAdvanced.optimizeAdvanced({
         nbVehicules,
         maxTimePerVehicule,
         adresses: deliveries,
