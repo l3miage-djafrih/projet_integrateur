@@ -13,6 +13,7 @@ import { Injector,runInInjectionContext } from '@angular/core';
 import { matrix400  } from './data/dataSet400Adresses/matrix_377_complete';
 import { adresse400 } from './data/dataSet400Adresses/adresses_377._complete';
 import { Sweep } from './services/optimisation-sweep.service';
+import { OptimizeAdvancedService } from './services/optimisation-clusters';
 
 const lastAdressesKey = "adresses";
 const lastOptimizationResponseKey = "lastOptimizationResponse";
@@ -32,7 +33,8 @@ export class App {
   // Services
   private readonly _srvCarto = inject(Carto);
   private readonly _sweepService=inject(Sweep);
-  private readonly injector=inject(Injector)
+  private readonly injector=inject(Injector);
+  private readonly _srvOptimizeAdvanced = inject(OptimizeAdvancedService);
 
   // 🔥 DONNÉES PRÉ-CALCULÉES - EXACTEMENT COMME LA PHOTO
   matrice100 = matrix400;
@@ -211,7 +213,92 @@ export class App {
     this.downloadAdressesJson(this._adresses().length);
     await this.downloadMatrix(this._adresses().length);
   }
+protected async optimizeRoutesCluster(
+    nbVehicules: number,
+    maxTimePerVehicule: number
+  ): Promise<void> {
+    this._routes.set([])
+    const adresses = this._adresses();
 
+    if (adresses.length === 0) {
+      console.warn('No addresses.');
+      return;
+    }
+
+    const parking = adresses.at(-1)!;
+    const deliveries = adresses.slice(0, -1);
+
+    // Choisir entre optimize (simple) et optimizeAdvanced (complexe)
+    const useSimpleOptimization = deliveries.length <= 50 && nbVehicules <= 3;
+
+    if (useSimpleOptimization) {
+      console.log('🚀 Optimization simple (≤50 adresses, ≤3 véhicules)');
+      
+      const optimizedRoute = await this._srvCarto.optimize({
+        nbVehicules,
+        maxTimePerVehicule,
+        adresses: deliveries,
+        parking
+      });
+
+      this._optimizationResult.set(optimizedRoute);
+
+      const allDirections: ReadonlyArray<LatLngTuple>[] = [];
+
+      if (optimizedRoute.routes.length > 0) {
+        for (const route of optimizedRoute.routes) {
+          const directions = await this._srvCarto.getDirections(
+            route.steps.map(s => s.location)
+          );
+          allDirections.push([...directions] as LatLngTuple[]);
+        }
+      }
+
+      this._routes.set(allDirections);
+    } else {
+      console.log('🚀 Optimization avancée (>50 adresses ou >3 véhicules)');
+
+      const result = await this._srvOptimizeAdvanced.optimizeAdvanced({
+        nbVehicules,
+        maxTimePerVehicule,
+        adresses: deliveries,
+        parking,
+        preCalculatedMatrix: {
+          distances: matrix400.distances,
+          durations: matrix400.durations
+        }
+      });
+
+      // Afficher les statistiques
+      console.log(`\n📊 Statistiques finales :`);
+      console.log(`  ✅ Adresses livrées : ${result.stats.deliveredCount}/${result.stats.totalAddresses}`);
+      console.log(`  📈 Taux de réussite : ${result.stats.successRate.toFixed(1)}%`);
+      console.log(`  🚛 Routes créées : ${result.stats.totalRoutes}`);
+      
+      if (result.stats.undeliveredCount > 0) {
+        console.warn(`  ⚠️ ${result.stats.undeliveredCount} adresses non livrées`);
+      }
+
+      // Stocker le premier résultat pour compatibilité
+      if (result.results.length > 0) {
+        this._optimizationResult.set(result.results[0]);
+      }
+
+      // Récupérer les directions pour toutes les routes
+      const allDirections: ReadonlyArray<LatLngTuple>[] = [];
+
+      for (const routeResult of result.results) {
+        if (routeResult.routes.length > 0) {
+          const directions = await this._srvCarto.getDirections(
+            routeResult.routes[0].steps.map(s => s.location)
+          );
+          allDirections.push([...directions] as LatLngTuple[]);
+        }
+      }
+
+      this._routes.set(allDirections);
+    }
+  }
   /**
    * Optimisation des routes
    */
@@ -257,8 +344,7 @@ protected optimizeRoutesSweepe(
     maxTimePerVehicule: number,
     
   ): Promise<void> {
-    let adresses=this._adresses();
-    this._routes.set([]);
+    let adresses=this._adresses()
     if ( adresses.length === 0) {
       console.warn('No addresses to optimize.');
       return;
