@@ -6,8 +6,8 @@ import { getMarker } from './utils/marker';
 import { FormsModule } from '@angular/forms';
 import { Adresse } from './data/adresse';
 import { OptimizationResult } from './services/OptimizationResult';
-import { adresse100 } from './data/dataSet100Adresses/adresse_96_complete';
-import { matrix100 } from './data/dataSet100Adresses/matrix_96_complete';
+import { adresse50 } from './data/dataSet50Adresses/adresse_47_complete';
+import { matrix50 } from './data/dataSet50Adresses/matrix_47_complete';
 
 @Component({
   selector: 'app-root',
@@ -26,8 +26,8 @@ export class App {
     center: latLng(45.188529, 5.724524),
   };
 
-  // 🔥 DONNÉES UNIQUEMENT DEPUIS LE FICHIER
-  private readonly _adresses = signal<readonly Adresse[]>(adresse100);
+  // DONNÉES UNIQUEMENT DEPUIS LE FICHIER
+  private readonly _adresses = signal<readonly Adresse[]>(adresse50);
 
   private readonly _optimizationResult: WritableSignal<undefined | OptimizationResult> =
     signal(undefined);
@@ -96,32 +96,61 @@ export class App {
     const parking = adresses.at(-1)!;
     const deliveries = adresses.slice(0, -1);
 
-    console.log('🚀 Optimization using preloaded dataset');
+    // Choisir entre optimize (simple) et optimizeAdvanced (complexe)
+    const useSimpleOptimization = deliveries.length <= 50 && nbVehicules <= 3;
 
-    const optimizedRoutes = await this._srvCarto.optimizeAdvanced({
-      nbVehicules,
-      maxTimePerVehicule,
-      adresses: deliveries,
-      parking,
-      preCalculatedMatrix: {
-        distances: matrix100.distances,
-        durations: matrix100.durations
+    if (useSimpleOptimization) {
+      console.log('🚀 Optimization simple (≤50 adresses, ≤3 véhicules)');
+      
+      const optimizedRoute = await this._srvCarto.optimize({
+        nbVehicules,
+        maxTimePerVehicule,
+        adresses: deliveries,
+        parking
+      });
+
+      this._optimizationResult.set(optimizedRoute);
+
+      const allDirections: ReadonlyArray<LatLngTuple>[] = [];
+
+      if (optimizedRoute.routes.length > 0) {
+        for (const route of optimizedRoute.routes) {
+          const directions = await this._srvCarto.getDirections(
+            route.steps.map(s => s.location)
+          );
+          allDirections.push([...directions] as LatLngTuple[]);
+        }
       }
-    });
 
-    this._optimizationResult.set(optimizedRoutes[0]);
+      this._routes.set(allDirections);
+    } else {
+      console.log('🚀 Optimization avancée (>50 adresses ou >3 véhicules)');
 
-    const allDirections: ReadonlyArray<LatLngTuple>[] = [];
+      const optimizedRoutes = await this._srvCarto.optimizeAdvanced({
+        nbVehicules,
+        maxTimePerVehicule,
+        adresses: deliveries,
+        parking,
+        preCalculatedMatrix: {
+          distances: matrix50.distances,
+          durations: matrix50.durations
+        }
+      });
 
-    for (const routeResult of optimizedRoutes) {
-      if (routeResult.routes.length > 0) {
-        const directions = await this._srvCarto.getDirections(
-          routeResult.routes[0].steps.map(s => s.location)
-        );
-        allDirections.push([...directions] as LatLngTuple[]);
+      this._optimizationResult.set(optimizedRoutes[0]);
+
+      const allDirections: ReadonlyArray<LatLngTuple>[] = [];
+
+      for (const routeResult of optimizedRoutes) {
+        if (routeResult.routes.length > 0) {
+          const directions = await this._srvCarto.getDirections(
+            routeResult.routes[0].steps.map(s => s.location)
+          );
+          allDirections.push([...directions] as LatLngTuple[]);
+        }
       }
+
+      this._routes.set(allDirections);
     }
-
-    this._routes.set(allDirections);
   }
 }
