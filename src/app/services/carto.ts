@@ -21,6 +21,20 @@ interface IndexedAddress {
   idx: number;
 }
 
+export interface OptimizationAdvancedResult {
+  results: OptimizationResult[];
+  delivered: number[];        // indices des adresses livrées
+  undelivered: number[];      // indices des adresses NON livrées
+  stats: {
+    totalAddresses: number;
+    deliveredCount: number;
+    undeliveredCount: number;
+    successRate: number;      // pourcentage (0-100)
+    totalRoutes: number;
+    failedRoutes: number;
+  };
+}
+
 /**
  * CONVENTION MATRICE — valable pour 50, 100, 400 adresses ou plus :
  *
@@ -106,12 +120,10 @@ export class Carto {
   /**
    * Fonctionne pour n'importe quelle taille de dataset (50, 100, 400...).
    *
-   * Stratégie :
-   *  1. Clustering géographique GPS → clusters géographiquement compacts
-   *  2. Nearest-Neighbor pour construire l'ordre initial de chaque cluster
-   *  3. 2-opt pour améliorer chaque route localement
-   *  4. Inter-route relocation : déplace des adresses entre routes pour réduire le coût total
-   *  5. Appel ORS par cluster (1 véhicule, ≤ 50 adresses par appel)
+   * Stratégie simplifiée :
+   *  1. Clustering basé sur les durées réelles → clusters temporellement compacts
+   *  2. Appel ORS par cluster qui fait l'optimisation complète
+   *  3. Tracking des adresses livrées vs non livrées
    */
   public async optimizeAdvanced(params: {
     nbVehicules: number;
@@ -119,7 +131,7 @@ export class Carto {
     adresses: readonly Adresse[];
     parking: Adresse;
     preCalculatedMatrix?: { distances: number[][]; durations: number[][] };
-  }): Promise<OptimizationResult[]> {
+  }): Promise<OptimizationAdvancedResult> {
     const { nbVehicules, maxTimePerVehicule, adresses, parking, preCalculatedMatrix } = params;
 
     // parkingIdx = adresses.length → dynamique, valable pour 50, 100, 400...
@@ -152,39 +164,42 @@ export class Carto {
       dur  = m.durations;
     }
 
-    // ── Étape 2 : clustering géographique ─────────────────────
-    console.log('🗺️  Étape 2 : clustering géographique...');
+    // ── Étape 2 : clustering basé sur les durées ──────────────
+    console.log('🗺️  Étape 2 : clustering basé sur les durées réelles...');
     const indexed: IndexedAddress[] = adresses.map((address, idx) => ({ address, idx }));
-    const clusters = this.geoKMeans(indexed, nbVehicules, maxTimePerVehicule, dur, parkingIdx);
+    const clusters = this.durationKMedoids(indexed, nbVehicules, maxTimePerVehicule, dur, parkingIdx);
     console.log('Tailles des clusters :', clusters.map(c => c.length));
 
-    // ── Étape 3 : nearest-neighbor + 2-opt ────────────────────
-    console.log('⚡ Étape 3 : NN + 2-opt par cluster...');
-    let routes: number[][] = clusters.map(cluster => {
-      const idxs = cluster.map(p => p.idx);
-      const nn   = this.nearestNeighborOrder(idxs, dist, parkingIdx);
-      return this.twoOptImprove(nn, dist, parkingIdx);
-    });
+    // Validation : vérifier si les clusters semblent faisables
+    for (let i = 0; i < clusters.length; i++) {
+      const clusterIdxs = clusters[i].map(p => p.idx);
+      const estimatedTime = this.estimateClusterTime(clusterIdxs, dur, parkingIdx);
+      if (estimatedTime > maxTimePerVehicule * 1.2) {
+        console.warn(`⚠️ Cluster ${i + 1} : temps estimé ${Math.round(estimatedTime)}s > limite ${maxTimePerVehicule}s`);
+      }
+    }
 
-    // ── Étape 4 : inter-route relocation ──────────────────────
-    console.log('🔀 Étape 4 : inter-route relocation...');
-    routes = this.interRouteRelocation(routes, dist, dur, maxTimePerVehicule, parkingIdx);
-    console.log('Tailles finales :', routes.map(r => r.length));
-
-    // ── Étape 5 : appel ORS par cluster ───────────────────────
-    console.log('📡 Étape 5 : appel ORS par cluster...');
+    // ── Étape 3 : appel ORS par cluster + tracking ────────────
+    console.log('📡 Étape 3 : appel ORS par cluster...');
     const results: OptimizationResult[] = [];
+    const deliveredSet = new Set<number>();
+    let failedRoutesCount = 0;
 
-    for (let i = 0; i < routes.length; i++) {
-      const route = routes[i];
-      if (route.length === 0) continue;
+    for (let i = 0; i < clusters.length; i++) {
+      const cluster = clusters[i];
+      if (cluster.length === 0) continue;
 
-      const routeAddresses = route.map(idx => adresses[idx]);
-      console.log(`  Route ${i + 1}/${routes.length} → ${routeAddresses.length} adresses`);
+      const clusterAddresses = cluster.map(p => adresses[p.idx]);
+      console.log(`  Cluster ${i + 1}/${clusters.length} → ${clusterAddresses.length} adresses`);
 
-      // Split si > 50 (sécurité, ne devrait pas arriver grâce au rebalanceClusters)
-      const chunks = this.chunkArray(routeAddresses, 50);
-      for (const chunk of chunks) {
+      // Split si > 50 (sécurité API ORS)
+      const chunks = this.chunkArray(clusterAddresses, 50);
+      for (let chunkIdx = 0; chunkIdx < chunks.length; chunkIdx++) {
+        const chunk = chunks[chunkIdx];
+        const chunkOriginalIndices = cluster
+          .slice(chunkIdx * 50, (chunkIdx + 1) * 50)
+          .map(p => p.idx);
+
         try {
           const result = await this.optimize({
             nbVehicules: 1,
@@ -193,86 +208,174 @@ export class Carto {
             parking,
           });
           results.push(result);
+
+          // Tracker les adresses effectivement livrées par ORS
+          if (result.routes.length > 0) {
+            result.routes[0].steps.forEach(step => {
+              // Seuls les steps de type "job" ont un id
+              if (step.type === 'job') {
+                // step.id est l'index dans le chunk
+                const originalIdx = chunkOriginalIndices[step.id];
+                deliveredSet.add(originalIdx);
+              }
+            });
+
+            // Compter les jobs (exclure start et end)
+            const delivered = result.routes[0].steps.filter(s => s.type === 'job').length;
+            const requested = chunk.length;
+            if (delivered < requested) {
+              console.warn(`⚠️ ORS n'a livré que ${delivered}/${requested} adresses du chunk`);
+            }
+          }
         } catch (err) {
-          console.error(`❌ ORS error route ${i + 1}:`, err);
+          console.error(`❌ ORS error cluster ${i + 1}, chunk ${chunkIdx + 1}:`, err);
+          failedRoutesCount++;
         }
       }
 
-      if (i < routes.length - 1) await this.sleep(1500);
+      if (i < clusters.length - 1) await this.sleep(1500);
     }
 
-    console.log(`✅ ${results.length} routes optimisées.`);
-    return results;
+    // ── Résultats et statistiques ─────────────────────────────
+    const delivered = Array.from(deliveredSet).sort((a, b) => a - b);
+    const undelivered = adresses
+      .map((_, idx) => idx)
+      .filter(idx => !deliveredSet.has(idx));
+
+    const stats = {
+      totalAddresses: adresses.length,
+      deliveredCount: delivered.length,
+      undeliveredCount: undelivered.length,
+      successRate: adresses.length > 0 ? (delivered.length / adresses.length) * 100 : 0,
+      totalRoutes: results.length,
+      failedRoutes: failedRoutesCount,
+    };
+
+    console.log('\n📊 Résultats :');
+    console.log(`  ✅ Livrées : ${stats.deliveredCount}/${stats.totalAddresses} (${stats.successRate.toFixed(1)}%)`);
+    console.log(`  ❌ Non livrées : ${stats.undeliveredCount}`);
+    console.log(`  🚗 Routes créées : ${stats.totalRoutes}`);
+    if (stats.failedRoutes > 0) {
+      console.log(`  ⚠️ Routes échouées : ${stats.failedRoutes}`);
+    }
+
+    if (undelivered.length > 0) {
+      console.warn(`\n⚠️ Adresses non livrées (indices) : ${undelivered.slice(0, 10).join(', ')}${undelivered.length > 10 ? '...' : ''}`);
+      
+      // Estimation si faisable
+      const minTimeNeeded = this.estimateMinimumTimeForAll(adresses, dur, parkingIdx);
+      const maxTimeAvailable = nbVehicules * maxTimePerVehicule;
+      if (minTimeNeeded > maxTimeAvailable) {
+        console.warn(`\n💡 Suggestions :`);
+        console.warn(`  - Augmenter nbVehicules à ${Math.ceil(minTimeNeeded / maxTimePerVehicule)}`);
+        console.warn(`  - Ou augmenter maxTimePerVehicule à ${Math.ceil(minTimeNeeded / nbVehicules)}s`);
+      }
+    }
+
+    return { results, delivered, undelivered, stats };
   }
 
   // ============================================================
   //  CLUSTERING GÉOGRAPHIQUE (K-MEANS GPS)
   // ============================================================
 
-  private geoKMeans(
-    points: IndexedAddress[],
-    k: number,
-    maxTimePerVehicule: number,
-    durations: number[][],
-    parkingIdx: number,
-    maxIter = 50
-  ): IndexedAddress[][] {
-    if (points.length === 0) return [];
-    k = Math.min(k, points.length);
+  private durationKMedoids(
+  points: IndexedAddress[],
+  k: number,
+  maxTimePerVehicule: number,
+  durations: number[][],
+  parkingIdx: number,
+  maxIter = 50
+): IndexedAddress[][] {
+  if (points.length === 0) return [];
+  k = Math.min(k, points.length);
 
-    // Initialisation : points uniformément répartis triés par longitude
-    const sorted = [...points].sort((a, b) => a.address.lng - b.address.lng);
-    const step = Math.ceil(sorted.length / k);
-    let centroids: { lat: number; lng: number }[] = Array.from({ length: k }, (_, i) => {
-      const seed = sorted[Math.min(i * step, sorted.length - 1)];
-      return { lat: seed.address.lat, lng: seed.address.lng };
+  const n = points.length;
+  const idxs = points.map(p => p.idx); // indices dans la matrice
+
+  // ── Étape 1 : initialisation K-Medoids++ ──────────────────
+  // On choisit le 1er medoïde = point le plus proche du parking
+  const medoids: number[] = [];
+  const first = idxs.reduce((best, idx) =>
+    durations[parkingIdx][addrToMatrix(idx)] < durations[parkingIdx][addrToMatrix(best)]
+      ? idx : best,
+    idxs[0]
+  );
+  medoids.push(first);
+
+  // Les suivants : chaque point est choisi proportionnellement
+  // à sa distance (durée) au medoïde le plus proche déjà choisi
+  while (medoids.length < k) {
+    const weights = idxs.map(idx => {
+      const minDur = Math.min(
+        ...medoids.map(m => durations[addrToMatrix(m)][addrToMatrix(idx)])
+      );
+      return minDur * minDur; // distance² → favorise les points éloignés
     });
 
-    let assignments: number[] = new Array(points.length).fill(0);
+    const total = weights.reduce((s, w) => s + w, 0);
+    let rand = Math.random() * total;
+    let chosen = idxs[idxs.length - 1];
+    for (let i = 0; i < idxs.length; i++) {
+      rand -= weights[i];
+      if (rand <= 0) { chosen = idxs[i]; break; }
+    }
+    if (!medoids.includes(chosen)) medoids.push(chosen);
+  }
 
-    for (let iter = 0; iter < maxIter; iter++) {
-      let changed = false;
+  // ── Étape 2 : itérations K-Medoids ────────────────────────
+  let assignments: number[] = new Array(n).fill(0);
 
-      // Assignation : chaque point va au centroïd le plus proche
-      for (let pi = 0; pi < points.length; pi++) {
-        let best = 0;
-        let bestD = Infinity;
-        for (let ci = 0; ci < k; ci++) {
-          const d = this.geoDistanceSq(points[pi].address, centroids[ci]);
-          if (d < bestD) { bestD = d; best = ci; }
-        }
-        if (assignments[pi] !== best) { assignments[pi] = best; changed = true; }
+  for (let iter = 0; iter < maxIter; iter++) {
+    let changed = false;
+
+    // Assignation : chaque point va au medoïde le plus proche (en durée)
+    for (let pi = 0; pi < n; pi++) {
+      let best = 0;
+      let bestDur = Infinity;
+      for (let mi = 0; mi < medoids.length; mi++) {
+        const d = durations[addrToMatrix(points[pi].idx)][addrToMatrix(medoids[mi])];
+        if (d < bestDur) { bestDur = d; best = mi; }
       }
-
-      if (!changed) {
-        console.log(`  geoKMeans convergé en ${iter} itérations`);
-        break;
-      }
-
-      // Mise à jour : centroïd = moyenne géométrique du cluster
-      const sums = Array.from({ length: k }, () => ({ lat: 0, lng: 0, count: 0 }));
-      for (let pi = 0; pi < points.length; pi++) {
-        const c = assignments[pi];
-        sums[c].lat += points[pi].address.lat;
-        sums[c].lng += points[pi].address.lng;
-        sums[c].count++;
-      }
-      centroids = sums.map((s, ci) =>
-        s.count > 0
-          ? { lat: s.lat / s.count, lng: s.lng / s.count }
-          : centroids[ci]
-      );
+      if (assignments[pi] !== best) { assignments[pi] = best; changed = true; }
     }
 
-    // Construire les clusters
-    const clusters: IndexedAddress[][] = Array.from({ length: k }, () => []);
-    for (let pi = 0; pi < points.length; pi++) clusters[assignments[pi]].push(points[pi]);
+    if (!changed) {
+      console.log(`  durationKMedoids convergé en ${iter} itérations`);
+      break;
+    }
 
-    // Rééquilibrage : garantit que chaque cluster ≤ 50 (limite ORS)
-    this.rebalanceClusters(clusters, 50);
+    // Mise à jour : nouveau medoïde = point qui minimise
+    // la somme des durées vers tous les autres membres du cluster
+    for (let mi = 0; mi < medoids.length; mi++) {
+      const members = points.filter((_, pi) => assignments[pi] === mi);
+      if (members.length === 0) continue;
 
-    return clusters.filter(c => c.length > 0);
+      let bestMedoid = medoids[mi];
+      let bestCost = Infinity;
+
+      for (const candidate of members) {
+        const cost = members.reduce((sum, other) =>
+          sum + durations[addrToMatrix(candidate.idx)][addrToMatrix(other.idx)], 0
+        );
+        if (cost < bestCost) { bestCost = cost; bestMedoid = candidate.idx; }
+      }
+
+      if (bestMedoid !== medoids[mi]) {
+        medoids[mi] = bestMedoid;
+        // changed reste true → une nouvelle itération sera lancée
+      }
+    }
   }
+
+  // ── Étape 3 : construire les clusters ─────────────────────
+  const clusters: IndexedAddress[][] = Array.from({ length: medoids.length }, () => []);
+  for (let pi = 0; pi < n; pi++) clusters[assignments[pi]].push(points[pi]);
+
+  // Rééquilibrage : garantit que chaque cluster ≤ 50 (limite ORS)
+  this.rebalanceClusters(clusters, 50, durations);
+  return clusters.filter(c => c.length > 0);
+}
 
   private geoDistanceSq(
     a: { lat: number; lng: number },
@@ -284,25 +387,39 @@ export class Carto {
   }
 
   /** Transfère les adresses en excès vers d'autres clusters géographiquement proches */
-  private rebalanceClusters(clusters: IndexedAddress[][], maxSize: number): void {
-    for (let i = 0; i < clusters.length; i++) {
-      while (clusters[i].length > maxSize) {
-        const addr = clusters[i].pop()!;
-        let bestCluster = -1;
-        let bestDist = Infinity;
-        for (let j = 0; j < clusters.length; j++) {
-          if (j === i || clusters[j].length >= maxSize) continue;
-          const d = this.geoDistanceSq(addr.address, this.clusterCenter(clusters[j]));
-          if (d < bestDist) { bestDist = d; bestCluster = j; }
-        }
-        if (bestCluster === -1) {
-          clusters.push([addr]); // tous les clusters sont pleins : crée un nouveau
-        } else {
-          clusters[bestCluster].push(addr);
-        }
+  private rebalanceClusters(
+  clusters: IndexedAddress[][],
+  maxSize: number,
+  durations?: number[][]   // optionnel : si fourni, utilise les durées
+): void {
+  for (let i = 0; i < clusters.length; i++) {
+    while (clusters[i].length > maxSize) {
+      const addr = clusters[i].pop()!;
+      let bestCluster = -1;
+      let bestDist = Infinity;
+
+      for (let j = 0; j < clusters.length; j++) {
+        if (j === i || clusters[j].length >= maxSize) continue;
+
+        const d = durations
+          // Durée moyenne vers les membres du cluster cible
+          ? clusters[j].reduce((sum, member) =>
+              sum + durations[addrToMatrix(addr.idx)][addrToMatrix(member.idx)], 0
+            ) / (clusters[j].length || 1)
+          // Fallback GPS si pas de matrice
+          : this.geoDistanceSq(addr.address, this.clusterCenter(clusters[j]));
+
+        if (d < bestDist) { bestDist = d; bestCluster = j; }
+      }
+
+      if (bestCluster === -1) {
+        clusters.push([addr]);
+      } else {
+        clusters[bestCluster].push(addr);
       }
     }
   }
+}
 
   private clusterCenter(cluster: IndexedAddress[]): { lat: number; lng: number } {
     if (cluster.length === 0) return { lat: 0, lng: 0 };
@@ -313,148 +430,43 @@ export class Carto {
   }
 
   // ============================================================
-  //  NEAREST NEIGHBOR HEURISTIC
+  //  VALIDATION ET ESTIMATION
   // ============================================================
 
-  private nearestNeighborOrder(
-    idxs: number[],
-    distances: number[][],
-    parkingIdx: number
-  ): number[] {
-    if (idxs.length <= 1) return [...idxs];
-
-    const unvisited = new Set(idxs);
-    const route: number[] = [];
-
-    // Démarre par le point le plus proche du parking
-    let current = idxs.reduce((best, idx) =>
-      distances[parkingIdx][addrToMatrix(idx)] < distances[parkingIdx][addrToMatrix(best)]
-        ? idx : best,
-      idxs[0]
-    );
-
-    while (unvisited.size > 0) {
-      unvisited.delete(current);
-      route.push(current);
-      if (unvisited.size === 0) break;
-
-      let nearestIdx = -1;
-      let nearestDist = Infinity;
-      for (const next of unvisited) {
-        const d = distances[addrToMatrix(current)][addrToMatrix(next)];
-        if (d < nearestDist) { nearestDist = d; nearestIdx = next; }
-      }
-      current = nearestIdx;
-    }
-
-    return route;
-  }
-
-  // ============================================================
-  //  2-OPT
-  // ============================================================
-
-  private twoOptImprove(route: number[], distances: number[][], parkingIdx: number): number[] {
-    if (route.length < 4) return route;
-    let best = [...route];
-    let improved = true;
-    let iter = 0;
-    while (improved && iter++ < 100) {
-      improved = false;
-      for (let i = 0; i < best.length - 2; i++) {
-        for (let j = i + 2; j < best.length; j++) {
-          const candidate = this.twoOptSwap(best, i, j);
-          if (this.routeCost(candidate, distances, parkingIdx) < this.routeCost(best, distances, parkingIdx)) {
-            best = candidate;
-            improved = true;
-          }
-        }
-      }
-    }
-    return best;
-  }
-
-  private twoOptSwap(route: number[], i: number, j: number): number[] {
-    return [
-      ...route.slice(0, i + 1),
-      ...route.slice(i + 1, j + 1).reverse(),
-      ...route.slice(j + 1),
-    ];
-  }
-
-  // ============================================================
-  //  INTER-ROUTE RELOCATION
-  // ============================================================
-
-  private interRouteRelocation(
-    routes: number[][],
-    distances: number[][],
-    durations: number[][],
-    maxTime: number,
-    parkingIdx: number,
-    maxIter = 30
-  ): number[][] {
-    let best = routes.map(r => [...r]);
-    let improved = true;
-    let iter = 0;
-
-    while (improved && iter++ < maxIter) {
-      improved = false;
-      outer:
-      for (let i = 0; i < best.length; i++) {
-        for (let ci = 0; ci < best[i].length; ci++) {
-          const client = best[i][ci];
-          for (let j = 0; j < best.length; j++) {
-            if (j === i || best[j].length >= 50) continue;
-            for (let pos = 0; pos <= best[j].length; pos++) {
-              const newI = [...best[i].slice(0, ci), ...best[i].slice(ci + 1)];
-              const newJ = [...best[j].slice(0, pos), client, ...best[j].slice(pos)];
-              if (this.routeTime(newJ, durations, parkingIdx) > maxTime) continue;
-              const oldCost =
-                this.routeCost(best[i], distances, parkingIdx) +
-                this.routeCost(best[j], distances, parkingIdx);
-              const newCost =
-                this.routeCost(newI, distances, parkingIdx) +
-                this.routeCost(newJ, distances, parkingIdx);
-              if (newCost < oldCost - 1) {
-                best[i] = newI;
-                best[j] = newJ;
-                improved = true;
-                break outer;
-              }
-            }
-          }
-        }
-      }
-    }
-
-    console.log(`  interRouteRelocation: ${iter} itérations`);
-    return best.filter(r => r.length > 0);
-  }
-
-  // ============================================================
-  //  COÛT ET TEMPS DE ROUTE
-  // ============================================================
-
-  private routeCost(route: number[], distances: number[][], parkingIdx: number): number {
-    if (route.length === 0) return 0;
-    let cost = distances[parkingIdx][addrToMatrix(route[0])];
-    for (let i = 1; i < route.length; i++) {
-      cost += distances[addrToMatrix(route[i - 1])][addrToMatrix(route[i])];
-    }
-    cost += distances[addrToMatrix(route[route.length - 1])][parkingIdx];
-    return cost;
-  }
-
-  private routeTime(route: number[], durations: number[][], parkingIdx: number): number {
-    if (route.length === 0) return 0;
+  /**
+   * Estime le temps minimum pour un cluster (ordre naïf : parking → points dans l'ordre → parking)
+   */
+  private estimateClusterTime(idxs: number[], durations: number[][], parkingIdx: number): number {
+    if (idxs.length === 0) return 0;
     const SETUP = 30, SERVICE = 300;
-    let time = durations[parkingIdx][addrToMatrix(route[0])] + SETUP + SERVICE;
-    for (let i = 1; i < route.length; i++) {
-      time += durations[addrToMatrix(route[i - 1])][addrToMatrix(route[i])] + SETUP + SERVICE;
+    
+    // Simplification : temps = parking → premier + somme des segments + dernier → parking + services
+    let time = durations[parkingIdx][addrToMatrix(idxs[0])] + SETUP + SERVICE;
+    for (let i = 1; i < idxs.length; i++) {
+      time += durations[addrToMatrix(idxs[i - 1])][addrToMatrix(idxs[i])] + SETUP + SERVICE;
     }
-    time += durations[addrToMatrix(route[route.length - 1])][parkingIdx];
+    time += durations[addrToMatrix(idxs[idxs.length - 1])][parkingIdx];
     return time;
+  }
+
+  /**
+   * Estime le temps minimum total nécessaire pour toutes les adresses
+   */
+  private estimateMinimumTimeForAll(adresses: readonly Adresse[], durations: number[][], parkingIdx: number): number {
+    const SETUP = 30, SERVICE = 300;
+    const n = adresses.length;
+    
+    // Temps = somme des services + estimation de trajet
+    // (approximation : diamètre du nuage de points)
+    let maxDuration = 0;
+    for (let i = 0; i < n; i++) {
+      const toPark = durations[addrToMatrix(i)][parkingIdx];
+      const fromPark = durations[parkingIdx][addrToMatrix(i)];
+      maxDuration = Math.max(maxDuration, toPark, fromPark);
+    }
+    
+    // Estimation conservatrice : 2× diamètre + tous les services
+    return maxDuration * 2 + n * (SETUP + SERVICE);
   }
 
   // ============================================================

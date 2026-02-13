@@ -1,13 +1,13 @@
 import { Component, computed, inject, Signal, signal, WritableSignal } from '@angular/core';
 import { LeafletModule } from '@bluehalo/ngx-leaflet';
 import { latLng, LatLngBoundsLiteral, LatLngTuple, Layer, MapOptions, polyline, Rectangle, rectangle, tileLayer } from 'leaflet';
-import { Carto } from './services/carto';
+import { Carto, OptimizationAdvancedResult } from './services/carto';
 import { getMarker } from './utils/marker';
 import { FormsModule } from '@angular/forms';
 import { Adresse } from './data/adresse';
 import { OptimizationResult } from './services/OptimizationResult';
-import { adresse50 } from './data/dataSet50Adresses/adresse_47_complete';
-import { matrix50 } from './data/dataSet50Adresses/matrix_47_complete';
+import { adresse100 } from './data/dataSet100Adresses/adresse_96_complete';
+import { matrix100 } from './data/dataSet100Adresses/matrix_96_complete';
 
 @Component({
   selector: 'app-root',
@@ -27,7 +27,7 @@ export class App {
   };
 
   // DONNÉES UNIQUEMENT DEPUIS LE FICHIER
-  private readonly _adresses = signal<readonly Adresse[]>(adresse50);
+  private readonly _adresses = signal<readonly Adresse[]>(adresse100);
 
   private readonly _optimizationResult: WritableSignal<undefined | OptimizationResult> =
     signal(undefined);
@@ -126,22 +126,36 @@ export class App {
     } else {
       console.log('🚀 Optimization avancée (>50 adresses ou >3 véhicules)');
 
-      const optimizedRoutes = await this._srvCarto.optimizeAdvanced({
+      const result = await this._srvCarto.optimizeAdvanced({
         nbVehicules,
         maxTimePerVehicule,
         adresses: deliveries,
         parking,
         preCalculatedMatrix: {
-          distances: matrix50.distances,
-          durations: matrix50.durations
+          distances: matrix100.distances,
+          durations: matrix100.durations
         }
       });
 
-      this._optimizationResult.set(optimizedRoutes[0]);
+      // Afficher les statistiques
+      console.log(`\n📊 Statistiques finales :`);
+      console.log(`  ✅ Adresses livrées : ${result.stats.deliveredCount}/${result.stats.totalAddresses}`);
+      console.log(`  📈 Taux de réussite : ${result.stats.successRate.toFixed(1)}%`);
+      console.log(`  🚛 Routes créées : ${result.stats.totalRoutes}`);
+      
+      if (result.stats.undeliveredCount > 0) {
+        console.warn(`  ⚠️ ${result.stats.undeliveredCount} adresses non livrées`);
+      }
 
+      // Stocker le premier résultat pour compatibilité
+      if (result.results.length > 0) {
+        this._optimizationResult.set(result.results[0]);
+      }
+
+      // Récupérer les directions pour toutes les routes
       const allDirections: ReadonlyArray<LatLngTuple>[] = [];
 
-      for (const routeResult of optimizedRoutes) {
+      for (const routeResult of result.results) {
         if (routeResult.routes.length > 0) {
           const directions = await this._srvCarto.getDirections(
             routeResult.routes[0].steps.map(s => s.location)
