@@ -11,6 +11,8 @@ import { Sweep } from './services/sweepAlgorithme';
 import { adresse50 } from './data/dataSet50Adresses/adresse_47_complete';
 import { adresse400 } from './data/dataSet400Adresses/adresses_377._complete';
 import { adresse100 } from './data/dataSet100Adresses/adresse_96_complete';
+import { Injector, runInInjectionContext } from '@angular/core';
+
 
 const lastAdressesKey = "adresses";
 const lastOptimizationResponseKey = "lastOptimizationResponse";
@@ -30,6 +32,7 @@ export class App {
   // Services
   private readonly _srvCarto = inject(Carto);
   private readonly _sweepService=inject(Sweep)
+  private readonly injector = inject(Injector);
 
  
 
@@ -230,6 +233,41 @@ protected async generateAdresses(nb: number): Promise<void> {
    * The steps are provided by the adresses signal attribute.
    */
  
+  protected optimizeRoutes(
+    nbVehicules: number,
+    maxTimePerVehicule: number,
+    adresses?:readonly Adresse[]
+  ): void {
+   
+    if (!adresses || adresses.length === 0) {
+      console.warn('No addresses to optimize.');
+      return;
+    }
+    this._srvCarto.optimize({
+      nbVehicules,
+      maxTimePerVehicule,
+      adresses: adresses.slice(0, -1),
+      parking: adresses.at(-1)!
+    }).catch(
+      err => {
+        console.error('Optimization error:', err);
+        this._optimizationResult.set(undefined);
+        return undefined;
+      }
+    ).then(
+      opt => {
+        this._optimizationResult.set(opt);
+        if (opt === undefined) return undefined;
+        return Promise.all(
+          opt.routes.map(
+            route => this._srvCarto.getDirections( route.steps.map(s => s.location) )
+          )
+        )
+      }
+    ).then(
+      routes => this._routes.set(routes ?? [])
+    );
+  }
 
 
 
@@ -237,29 +275,43 @@ protected async generateAdresses(nb: number): Promise<void> {
 
 
 
-  protected async optimizeRoutesAndAppend(
+
+protected async optimizeRoutesAndAppend(
   nbVehicules: number,
   maxTimePerVehicule: number,
   adresses: readonly Adresse[]
 ): Promise<void> {
 
-  // snapshot avant optimisation
   const previousRoutes = this._routes();
 
-  // appel SANS MODIFIER optimizeRoutes
-  await this.optimizeRoutes(nbVehicules, maxTimePerVehicule, adresses);
+  // appel SANS modifier optimizeRoutes
+  this.optimizeRoutes(nbVehicules, maxTimePerVehicule, adresses);
 
-  // snapshot après optimisation
-  const currentRoutes = this._routes();
+  // attendre la vraie mise à jour de _routes
+  const newRoutes = await runInInjectionContext(
+    this.injector,
+    () =>
+      new Promise<ReadonlyArray<ReadonlyArray<LatLngTuple>>>(resolve => {
+        const ref = effect(() => {
+          const current = this._routes();
+          if (current !== previousRoutes) {
+            ref.destroy();
+            resolve(current);
+          }
+        });
+      })
+  );
 
-  // nouvelles routes uniquement
-  const newRoutes = currentRoutes.slice(previousRoutes.length);
+  // append garanti
+  this._routes.set([
+    ...previousRoutes,
+    ...newRoutes
+  ]);
 
-  if (newRoutes.length === 0) return;
-
-  // append propre
-  this._routes.set([...previousRoutes, ...newRoutes]);
+  console.log('✅ Routes cumulées:', this._routes().length);
 }
+
+
 
 
 
@@ -334,71 +386,65 @@ private async downloadMatrix(nb: number): Promise<void> {
 
 
 
-public async megaOptimization(vehicules:number): Promise<void> {
-  const MAX_ROUTES_API = 3500;
-  const VEHICULES = vehicules;
-  const MAX_ADDRESSES_PER_CHUNK = Math.floor(MAX_ROUTES_API / VEHICULES);
-  let vehiculesRestant=vehicules;
+public async megaOptimization(vehicules: number): Promise<void> {
+  let vehiculesRestant = vehicules;
 
   // clear previous routes
   this._routes.set([]);
 
-  // parking = last address
   const parking = this._adresses().at(-1)!;
 
-  // STEP 1: sweep
-  const angles = this._sweepService.constructionDesAngles(this._adresses(),parking);
+  const angles = this._sweepService.constructionDesAngles(this._adresses(), parking);
   const chunks = this._sweepService.constructionChunkes(angles);
 
   console.log(`🔹 ${chunks.length} chunks générés par Sweep.`);
 
-  // STEP 2: optimize each chunk
-  
+  for (const chunk of chunks) {
 
-  
-  
+    if (vehiculesRestant === 0) {
+      console.warn('⛔ Plus de véhicules disponibles');
+      break;
+    }
 
-      
+    const chunkWithParking = [...chunk, parking];
+    let solved = false;
 
-      for (const Chunk of chunks) {
-        if(vehiculesRestant==0){
-          console.log("stop tout y'as rien qui va ");
-          break;
-        }
-        console.log("le nombre de véhicules restant est "+vehiculesRestant);
+    // essayer 1 → 2 → 3 véhicules
+    for (let vehiculeCurrent = 1; vehiculeCurrent <= 3; vehiculeCurrent++) {
 
-        const chunkWithParking = [...Chunk, parking];
-        let vehiculesNecessaires=1;
-        let result=await this.optimizeRoutesAndAppend(vehiculesNecessaires, 10000, chunkWithParking);
-        console.log(this._optimizationResult());
-        console.log(" j'ai fait le premier appel de l'entré dans le for and the number of parametres is  "+vehiculesNecessaires );
-        let unassignedLength=this._optimizationResult()?.unassigned==undefined ? 0:1;
-        console.log("la valeur de unassignedLength est "+unassignedLength);
-        while(this._optimizationResult()===undefined || unassignedLength>0){
-          if(vehiculesNecessaires==3){
-            console.log("le chunks ne pourra pas se desservie avec 3 livreurs ,on va passer au prochain");
-            break;
-          }
-          else if(vehiculesRestant==0){
-            console.log("il faut ajouter des livreurs ");
-            break;
-          }
-          else{
-          vehiculesNecessaires=vehiculesNecessaires+1;
+      if (vehiculeCurrent > vehiculesRestant) break;
 
-          result=await this.optimizeRoutes(vehiculesNecessaires,10000,Chunk)
-          console.log("je suis dans l'appel de else et j'ai "+vehiculesNecessaires+" de livreurs");
-          }
+      console.log(`🚚 Tentative avec ${vehiculeCurrent} véhicule(s)`);
 
-        }
-        vehiculesRestant=vehiculesRestant-vehiculesNecessaires;
-        await new Promise(r => setTimeout(r, 3000));
+      await this.optimizeRoutesAndAppend(
+        vehiculeCurrent,
+        10000,
+        chunkWithParking
+      );
+
+      const unassignedLength = this._optimizationResult()?.unassigned?.length ?? 0;
+
+      if (unassignedLength === 0) {
+        console.log(`✅ Chunk résolu avec ${vehiculeCurrent} véhicule(s)`);
+
+        vehiculesRestant -= vehiculeCurrent;
+        solved = true;
+        break;
       }
 
-      console.log("fin de l'optimization");
+      console.warn(`❌ Échec avec ${vehiculeCurrent} véhicule(s)`);
+    }
 
-    } 
-   
+    if (!solved) {
+      console.warn('⚠️ Chunk ignoré (max 3 véhicules insuffisants)');
+    }
+
+    await new Promise(r => setTimeout(r, 3000));
+  }
+
+  console.log('🏁 Fin de l’optimisation');
+}
+
   
 
   
