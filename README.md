@@ -1,33 +1,33 @@
-# Semaine 2 : Groupe N°12 
-Membres du groupe : 
-DJAFRI Halim 
-BENTAHA Ahcene 
-DID Abderahmane
-BENKHENNOUCHE Dihya
-BOUAMARA Celia
-BELKHATAB Maria
+# Semaine 2 : Groupe N°12  
+Membres du groupe :  
+DJAFRI Halim   
+BENTAHA Ahcene   
+DID Abderahmane  
+BENKHENNOUCHE Dihya  
+BOUAMARA Celia  
+BELKHATAB Maria  
 
 
-## Phase 1 : 
-### Les limites d’OpenRouteService (ORS) : 
-L’utilisation de l’API OpenRouteService (ORS) est soumise à plusieurs contraintes techniques :
-- Calcul de la matrice temps–distance :
-→ maximum 50 adresses par requête.
-- Nombre de véhicules de livraison :
-→ maximum 3 véhicules.
-- Nombre d’adresses optimisables (Optimization API) :
-→ maximum 50 adresses.
-- Nombre de requetes :
-→ 40 requetes par minute.
+## Phase 1 :   
+### Les limites d’OpenRouteService (ORS) :   
+L’utilisation de l’API OpenRouteService (ORS) est soumise à plusieurs contraintes techniques :  
+- Calcul de la matrice temps–distance :  
+→ maximum 50 adresses par requête.  
+- Nombre de véhicules de livraison :  
+→ maximum 3 véhicules.  
+- Nombre d’adresses optimisables (Optimization API) :  
+→ maximum 50 adresses.  
+- Nombre de requetes :  
+→ 40 requetes par minute.  
 
-### La génération des jeux de données :
-Pour générer les jeux de données, nous utilisons l’API fournie dans l’amorce du code (API Gouv, nom exact à préciser).
-Cette API permet de générer des points de livraison dans une zone géographique bien déterminée. Cependant :
-Les adresses générées sont uniquement :
-- stockées dans le localStorage du navigateur,
-- affichées sur la carte.
-Elles ne sont pas automatiquement sauvegardées sous forme de fichiers exploitables.
-Pour résoudre ce problème, nous avons créé une méthode :
+### La génération des jeux de données :  
+Pour générer les jeux de données, nous utilisons l’API fournie dans l’amorce du code (API Gouv, nom exact à préciser).  
+Cette API permet de générer des points de livraison dans une zone géographique bien déterminée. Cependant :  
+Les adresses générées sont uniquement :  
+- stockées dans le localStorage du navigateur,  
+- affichées sur la carte.  
+Elles ne sont pas automatiquement sauvegardées sous forme de fichiers exploitables.  
+Pour résoudre ce problème, nous avons créé une méthode :  
 
 ```Typescript
 downloadAdressesJson(nb: number)
@@ -35,9 +35,9 @@ downloadAdressesJson(nb: number)
 
 Cette méthode :
 - récupère le signal _adresses, qui contient la liste des adresses générées,
-- permet de sauvegarder ces adresses dans un fichier JSON.
-Elle fonctionne pour : 50 adresses, 100 adresses, 400 adresses.
-Les fichiers générés sont disponibles dans le dossier : 'src/app/data' (les fichiers adresses)
+- permet de sauvegarder ces adresses dans un fichier JSON.  
+Elle fonctionne pour : 50 adresses, 100 adresses, 400 adresses.  
+Les fichiers générés sont disponibles dans le dossier : 'src/app/data' (les fichiers adresses).  
 
 
 ## Phase 2 : 
