@@ -76,10 +76,7 @@ export class App {
   private readonly _adresses = signal<readonly Adresse[]>(adresse50);
    private readonly _matrice = signal< Matrice>(matrix400);
   private readonly _optimizationResult: WritableSignal<undefined | OptimizationResult>;
-  private readonly _routes = signal<ReadonlyArray<ReadonlyArray<LatLngTuple>>>(
-    localStorage.getItem(lastRoutesKey) ? JSON.parse(localStorage.getItem(lastRoutesKey)!) : []
-  );
-
+  private readonly _routes = signal<ReadonlyArray<ReadonlyArray<LatLngTuple>>>([]);
   protected readonly layers: Signal<Layer[]>;
   
   private readonly colors = [
