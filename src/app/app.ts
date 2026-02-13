@@ -229,42 +229,38 @@ protected async generateAdresses(nb: number): Promise<void> {
    * Optimization of the routes with the given number of vehicles.
    * The steps are provided by the adresses signal attribute.
    */
-   protected async optimizeRoutes(
-    nbVehicules: number,
-    maxTimePerVehicule: number,
-    adresses:readonly Adresse[]
-  ): Promise<void> {
-    
-    if (adresses.length === 0) {
-      console.warn('No addresses to optimize.');
-      return;
-    }               // l'appel à la fonction d'optimization se fait ici 
-    this._srvCarto.optimize({
-      nbVehicules,
-      maxTimePerVehicule,
-      adresses: adresses,
-      parking: adresses.at(-1)!
-    }).catch(
-      err => {
-        console.error('Optimization error:', err);
-        this._optimizationResult.set(undefined);
-        return undefined;
-      }
-    ).then(
-      opt => {
-        this._optimizationResult.set(opt);
-        if (opt === undefined) return undefined;
-        return Promise.all(
-          opt.routes.map(
-            route => this._srvCarto.getDirections( route.steps.map(s => s.location) )
-          )
-        )
-      }
-    ).then(newRoutes => {
-    if (!newRoutes) return;
-    this._routes.update(oldRoutes => [...oldRoutes, ...newRoutes]);
-});
-  }
+ 
+
+
+
+
+
+
+
+  protected async optimizeRoutesAndAppend(
+  nbVehicules: number,
+  maxTimePerVehicule: number,
+  adresses: readonly Adresse[]
+): Promise<void> {
+
+  // snapshot avant optimisation
+  const previousRoutes = this._routes();
+
+  // appel SANS MODIFIER optimizeRoutes
+  await this.optimizeRoutes(nbVehicules, maxTimePerVehicule, adresses);
+
+  // snapshot après optimisation
+  const currentRoutes = this._routes();
+
+  // nouvelles routes uniquement
+  const newRoutes = currentRoutes.slice(previousRoutes.length);
+
+  if (newRoutes.length === 0) return;
+
+  // append propre
+  this._routes.set([...previousRoutes, ...newRoutes]);
+}
+
 
 
 
@@ -373,7 +369,7 @@ public async megaOptimization(vehicules:number): Promise<void> {
 
         const chunkWithParking = [...Chunk, parking];
         let vehiculesNecessaires=1;
-        let result=await this.optimizeRoutes(vehiculesNecessaires, 10000, chunkWithParking);
+        let result=await this.optimizeRoutesAndAppend(vehiculesNecessaires, 10000, chunkWithParking);
         console.log(this._optimizationResult());
         console.log(" j'ai fait le premier appel de l'entré dans le for and the number of parametres is  "+vehiculesNecessaires );
         let unassignedLength=this._optimizationResult()?.unassigned==undefined ? 0:1;
