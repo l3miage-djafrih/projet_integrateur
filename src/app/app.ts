@@ -482,7 +482,7 @@ export class App {
     console.log(`${chunks.length} chunks generes.`);
 
     for (const chunk of chunks) {
-      let routesAvant = JSON.parse(JSON.stringify(this._routes()));
+      let routesAvant =this._routes();
       let chunkSolved = false;
 
       if (vehiculesRestant === 0) {
