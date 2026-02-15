@@ -1,4 +1,5 @@
 import * as zod from 'zod';
+import { Adresse } from '../data/adresse';
 
 export interface OptimizationResult {
     readonly code: number;
@@ -108,4 +109,14 @@ const OptimizationResultSchema = zod.object({
 
 export function parseOptimizationResultP(data: unknown): Promise<OptimizationResult> {
     return OptimizationResultSchema.parseAsync(data);
+}
+
+export interface OptimizationReport {
+  requestedVehicles: number;    // ce que l'utilisateur a demandé
+  vehiclesUsed: number;         // ce qu'on utilise réellement
+  minVehiclesNeeded: number;    // minimum calculé
+  totalAddresses: number;       // total fourni
+  assignedAddresses: number;    // effectivement dans une route
+  unassignedAddresses: Adresse[]; // adresses non couvertes
+  warnings: string[];           // messages explicatifs
 }
